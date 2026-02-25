@@ -1,50 +1,84 @@
-# Welcome to your Expo app 👋
+# ✅ Lumen Financial - Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicação de gerenciamento financeiro utilizando React Native, com funcionalidades avançadas que foram ensinadas nas disciplinas do curso de pós-graduação em Front-End Engineering da Pos Tech.
 
-## Get started
+## Desenvolvimento Expo app
 
-1. Install dependencies
+Esse é um projeto [Expo](https://expo.dev) criado com [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+
+### Como executar o projeto
+
+1. Instalar dependências
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Iniciar o app com o [Expo Go](https://expo.dev/go)
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+### Características do projeto
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- A versão mobile do Lumen Financial usa [file-based routing](https://docs.expo.dev/router/introduction).
+- A configuração inicial foi feita seguindo o [Expo tutorial](https://docs.expo.dev/tutorial/introduction/).
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-## Get a fresh project
+## 📌 Proposta
 
-When you're ready, run:
+* [ ] Desenvolver uma aplicação de gerenciamento financeiro, utilizando React Native ou Flutter Mobile, com funcionalidades avançadas que foram ensinadas nas disciplinas.
+* [ ] A aplicação deve ser capaz de gerenciar transações financeiras, integrando recursos de navegação, segurança, autenticação e armazenamento em cloud.
 
-```bash
-npm run reset-project
-```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 📱 Requisitos do Desafio
 
-## Learn more
+### Tela Principal (Dashboard)
 
-To learn more about developing your project with Expo, look at the following resources:
+* [ ] Exibir gráficos e análises financeiras baseados nas transações do usuário.
+* [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Tela de Listagem de Transações
 
-## Join the community
+* [ ] Permitir ao usuário visualizar uma lista de transações com filtros avançados (por data, categoria, etc.).
+* [ ] Implementar scroll infinito ou paginação para lidar com grandes volumes de dados.
+* [ ] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
 
-Join our community of developers creating universal apps.
+### Tela de Adicionar/Editar Transação
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+* [ ] Permitir ao usuário adicionar novas transações e editar transações existentes.
+* [ ] Validação Avançada de campos, como o valor e a categoria da transação.
+* [ ] Upload de Recibos: Permitir o upload de recibos ou documentos relacionados à transação, salvando-os no Firebase Storage.
+
+---
+
+## 🛠 Tecnologias e Conceitos Utilizados
+
+### React Native
+
+* [ ] React Native para criar a aplicação, aplicando boas práticas de otimização de performance e usabilidade.
+* [ ] Usar Expo para acelerar a configuração inicial do projeto e facilitar o desenvolvimento, especialmente para lidar com recursos como navegação, acesso a APIs nativas e integração com o Firebase.
+
+### Gerenciamento de Estado
+
+* [ ] Utilizar a Context API para gerenciar o estado global da aplicação, incluindo o estado de autenticação e transações.
+
+---
+
+## 📦 Entrega
+
+### Código Fonte
+
+* [ ] O código-fonte deve estar disponível em um repositório Git, com um README contendo as instruções necessárias para rodar a aplicação localmente.
+* [ ] O README deve incluir a configuração do Firebase, dependências necessárias e passos para executar o projeto.
+
+### Vídeo Demonstrativo
+
+* [ ] Um vídeo de até 5 (cinco) minutos mostrando as principais funcionalidades da aplicação, incluindo:
+* [ ] Login e autenticação.
+* [ ] Adicionar/Editar transações.
+* [ ] Visualizar e filtrar transações.
+* [ ] Upload de anexos.
+* [ ] Integração com Firebase.
