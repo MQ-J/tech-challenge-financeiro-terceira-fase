@@ -53,10 +53,15 @@ export default function LoginScreen() {
   const heroDirection = tablet ? 'row' as const : 'column' as const
   const contentCentered = width > MAX_CONTENT_WIDTH
   const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - paddingH * 2
-  const heroImageSize =
+  const heroImageSizeHeight =
     tablet
       ? Math.max(320, Math.min(450, contentWidth * 0.55))
-      : Math.max(280, Math.min(420, contentWidth * 0.75))
+      : Math.max(150, Math.min(200, contentWidth * 0.75))
+  
+   const heroImageSizeWidth =
+    tablet
+      ? Math.max(450, Math.min(450, contentWidth * 0.55))
+      : Math.max(320, Math.min(320, contentWidth * 0.75))
   const modalMaxWidth = tablet ? 440 : undefined
   const cardWidth = '48%' as const
 
@@ -175,7 +180,7 @@ export default function LoginScreen() {
                 source={require('@/assets/images/logo-destaque.png')}
                 style={[
                   styles.logoImage,
-                  { height: tablet ? 50 : 35, width: tablet ? 120 : 84 },
+                  { height: tablet ? 50 : 35, width: tablet ? 215 : 160 },
                 ]}
                 resizeMode="contain"
                 accessibilityLabel="Logo Lumen Financial"
@@ -254,7 +259,7 @@ export default function LoginScreen() {
               source={require('@/assets/images/pessoas.png')}
               style={[
                 styles.heroImage,
-                { width: heroImageSize, height: heroImageSize },
+                { width: heroImageSizeWidth, height: heroImageSizeHeight },
               ]}
               resizeMode="contain"
             />
@@ -307,20 +312,12 @@ export default function LoginScreen() {
           {
             paddingVertical: tablet ? 20 : 16,
             paddingHorizontal: paddingH,
-            alignItems: contentCentered ? 'center' : 'stretch',
+            alignItems: 'center',
           },
         ]}
       >
-        <View
-          style={[
-            styles.footerInner,
-            contentCentered && {
-              maxWidth: MAX_CONTENT_WIDTH,
-              alignSelf: 'center',
-            },
-          ]}
-        >
-          <View style={styles.footerColumn}>
+        <View style={styles.footerInner}>
+          <View style={styles.footerColumnLeft}>
             <Text
               style={[
                 styles.footerTitle,
@@ -345,7 +342,7 @@ export default function LoginScreen() {
               Cartão de Crédito
             </Text>
           </View>
-          <View style={styles.footerColumn}>
+          <View style={styles.footerColumnRight}>
             <Text
               style={[
                 styles.footerTitle,
@@ -491,7 +488,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 24,
+    paddingTop: '9%',
   },
   contentCenterWrapper: {
     alignSelf: 'center',
@@ -560,13 +557,17 @@ const styles = StyleSheet.create({
   },
   footerInner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     width: '100%',
-    alignSelf: 'center',
+    maxWidth: MAX_CONTENT_WIDTH,
   },
-  footerColumn: {
+  footerColumnLeft: {
     flex: 1,
-    maxWidth: '48%',
+    maxWidth: 280,
+  },
+  footerColumnRight: {
+    flex: 1,
+    maxWidth: 320,
   },
   footerTitle: {
     fontSize: 14,
