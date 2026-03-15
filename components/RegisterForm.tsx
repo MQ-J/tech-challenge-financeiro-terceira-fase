@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { View, Text, Alert, ScrollView, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, StyleSheet } from 'react-native'
+import Toast from 'react-native-toast-message'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -98,10 +99,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     const accountExists = list.some((account) => account.email === data.email)
 
     if (accountExists) {
-      Alert.alert(
-        'Não é possível fazer o cadastro com o e-mail solicitado',
-        'Este e-mail já está em uso.',
-      )
+      Toast.show({
+        type: 'error',
+        text1: 'Não é possível fazer o cadastro com o e-mail solicitado',
+        text2: 'Este e-mail já está em uso.',
+      })
       setIsLoading(false)
       return
     }
@@ -123,10 +125,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     list.push(newAccount)
     await setSecureItem('accountsList', list)
 
-    Alert.alert(
-      'Conta criada com sucesso!',
-      'Efetue o login para acessar sua nova conta',
-    )
+    Toast.show({
+      type: 'success',
+      text1: 'Conta criada com sucesso!',
+      text2: 'O (a) cliente já pode realizar o login.',
+    })
 
     setIsLoading(false)
 

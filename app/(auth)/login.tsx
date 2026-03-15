@@ -6,10 +6,10 @@ import {
   Image,
   ScrollView,
   Modal,
-  Alert,
   useWindowDimensions,
   Pressable,
 } from 'react-native'
+import Toast from 'react-native-toast-message'
 import { LinearGradient } from 'expo-linear-gradient'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import {
@@ -17,6 +17,7 @@ import {
   MAX_CONTENT_WIDTH,
   FOOTER_HEIGHT,
 } from '@/constants/layout'
+import { useRouter } from 'expo-router'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -39,6 +40,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginScreen() {
+  const router = useRouter()
   const { width } = useWindowDimensions()
   const tablet = isTabletLayout(width)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
@@ -118,25 +120,36 @@ export default function LoginScreen() {
             await setSecureItem('accountsList', updatedList)
           }
 
-          Alert.alert('Sucesso', 'Login efetuado com sucesso!')
+          setIsLoginModalOpen(false)
+          Toast.show({
+            type: 'success',
+            text1: 'Sucesso',
+            text2: 'Login efetuado com sucesso! Você está sendo redirecionado para a home.',
+          })
           await login(accountRegistered[0])
+          setTimeout(() => {
+            router.replace('/(tabs)' as const)
+          }, 500)
         } else {
-          Alert.alert(
-            'Erro ao fazer login',
-            'E-mail ou senha inválidos. Tente novamente.',
-          )
+          Toast.show({
+            type: 'error',
+            text1: 'Erro ao fazer login',
+            text2: 'E-mail ou senha inválidos. Tente novamente.',
+          })
         }
       } else {
-        Alert.alert(
-          'Erro ao fazer login',
-          'E-mail ou senha inválidos. Tente novamente.',
-        )
+        Toast.show({
+          type: 'error',
+          text1: 'Erro ao fazer login',
+          text2: 'E-mail ou senha inválidos. Tente novamente.',
+        })
       }
     } catch {
-      Alert.alert(
-        'Erro ao fazer login',
-        'E-mail ou senha inválidos. Tente novamente.',
-      )
+      Toast.show({
+        type: 'error',
+        text1: 'Erro ao fazer login',
+        text2: 'E-mail ou senha inválidos. Tente novamente.',
+      })
     } finally {
       setIsLoading(false)
     }
@@ -410,6 +423,9 @@ export default function LoginScreen() {
                   />
                 </View>
               </View>
+              <View style={styles.toastOverlay} pointerEvents="box-none" collapsable={false}>
+                <Toast />
+              </View>
             </View>
           </Modal>
 
@@ -437,6 +453,9 @@ export default function LoginScreen() {
                 <RegisterForm
                   onSuccess={() => setIsRegisterInfoModalOpen(false)}
                 />
+              </View>
+              <View style={styles.toastOverlay} pointerEvents="box-none" collapsable={false}>
+                <Toast />
               </View>
             </View>
           </Modal>
@@ -572,6 +591,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  toastOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    elevation: 9999,
   },
   modalContent: {
     width: '100%',
