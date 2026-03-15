@@ -2,8 +2,9 @@
  * Breakpoint (width in px) a partir do qual consideramos tablet.
  * Abaixo = layout mobile (coluna, cards empilhados).
  * Acima = layout tablet (hero em linha, grid 2x2, mais padding).
+ * 480px cobre Samsung Tab S FE e tablets similares (que podem reportar ~540–720 em portrait).
  */
-export const TABLET_BREAKPOINT = 600
+export const TABLET_BREAKPOINT = 480
 
 /** Largura máxima do conteúdo em telas grandes; conteúdo fica centralizado. */
 export const MAX_CONTENT_WIDTH = 800
