@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     minHeight: 200,
   },
   scroll: {
-    maxHeight: 340,
+    maxHeight: 460,
   },
   scrollContent: {
     paddingBottom: 12,
@@ -232,6 +232,7 @@ const styles = StyleSheet.create({
   },
   termsRow: {
     marginBottom: 8,
+    marginTop: 16,
   },
   errorText: {
     fontSize: 12,
@@ -240,7 +241,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   buttonRow: {
-    marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#eee',
