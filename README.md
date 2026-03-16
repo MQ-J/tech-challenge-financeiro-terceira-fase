@@ -1,84 +1,206 @@
-# ✅ Lumen Financial - Mobile
+# 📱 Lumen Financial - Mobile
 
-Aplicação de gerenciamento financeiro utilizando React Native, com funcionalidades avançadas que foram ensinadas nas disciplinas do curso de pós-graduação em Front-End Engineering da Pos Tech.
-
-## Desenvolvimento Expo app
-
-Esse é um projeto [Expo](https://expo.dev) criado com [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
-
-### Como executar o projeto
-
-1. Instalar dependências
-
-   ```bash
-   npm install
-   ```
-
-2. Iniciar o app com o [Expo Go](https://expo.dev/go)
-
-   ```bash
-   npx expo start
-   ```
-
-### Características do projeto
-
-- A versão mobile do Lumen Financial usa [file-based routing](https://docs.expo.dev/router/introduction).
-- A configuração inicial foi feita seguindo o [Expo tutorial](https://docs.expo.dev/tutorial/introduction/).
-
-
-## 📌 Proposta
-
-* [ ] Desenvolver uma aplicação de gerenciamento financeiro, utilizando React Native ou Flutter Mobile, com funcionalidades avançadas que foram ensinadas nas disciplinas.
-* [ ] A aplicação deve ser capaz de gerenciar transações financeiras, integrando recursos de navegação, segurança, autenticação e armazenamento em cloud.
+> Projeto desenvolvido como parte do Tech Challenge (Fase 3). Aplicação de gerenciamento financeiro em React Native (Expo), com autenticação, navegação e armazenamento seguro, alinhada aos requisitos e tecnologias da fase.
 
 ---
 
-## 📱 Requisitos do Desafio
+## Tech Challenge - Fase 3: Requisitos do desafio
 
-### Tela Principal (Dashboard)
+### Proposta
 
-* [ ] Exibir gráficos e análises financeiras baseados nas transações do usuário.
-* [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
-
-### Tela de Listagem de Transações
-
-* [ ] Permitir ao usuário visualizar uma lista de transações com filtros avançados (por data, categoria, etc.).
-* [ ] Implementar scroll infinito ou paginação para lidar com grandes volumes de dados.
-* [ ] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
-
-### Tela de Adicionar/Editar Transação
-
-* [ ] Permitir ao usuário adicionar novas transações e editar transações existentes.
-* [ ] Validação Avançada de campos, como o valor e a categoria da transação.
-* [ ] Upload de Recibos: Permitir o upload de recibos ou documentos relacionados à transação, salvando-os no Firebase Storage.
+- [x] Desenvolver uma aplicação de gerenciamento financeiro, utilizando React Native ou Flutter Mobile.
+- [x] A aplicação deve ser capaz de gerenciar transações financeiras, integrando recursos de navegação, segurança, autenticação e armazenamento (local seguro; cloud previsto para integração com Firebase).
 
 ---
 
-## 🛠 Tecnologias e Conceitos Utilizados
+### Estrutura e requisitos das telas
 
-### React Native
+#### Tela Principal (Dashboard)
 
-* [ ] React Native para criar a aplicação, aplicando boas práticas de otimização de performance e usabilidade.
-* [ ] Usar Expo para acelerar a configuração inicial do projeto e facilitar o desenvolvimento, especialmente para lidar com recursos como navegação, acesso a APIs nativas e integração com o Firebase.
+- [x] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
+- [ ] Exibir gráficos e análises financeiras baseados nas transações do usuário.
+- [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
 
-### Gerenciamento de Estado
+#### Tela de Listagem de Transações
 
-* [ ] Utilizar a Context API para gerenciar o estado global da aplicação, incluindo o estado de autenticação e transações.
+- [x] Permitir ao usuário visualizar uma lista de transações.
+- [ ] Filtros avançados (por data, categoria, etc.).
+- [ ] Scroll infinito ou paginação para grandes volumes de dados.
+- [ ] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
+
+#### Tela de Adicionar/Editar Transação
+
+- [x] Estrutura para adicionar novas transações e editar transações existentes.
+- [x] Validação de campos com React Hook Form e Zod.
+- [ ] Validação avançada de valor e categoria da transação.
+- [ ] Upload de Recibos: permitir o upload de recibos ou documentos relacionados à transação, salvando-os no Firebase Storage.
 
 ---
 
-## 📦 Entrega
+### Tecnologias e conceitos a serem utilizados
 
-### Código Fonte
+#### React Native (Mobile)
 
-* [ ] O código-fonte deve estar disponível em um repositório Git, com um README contendo as instruções necessárias para rodar a aplicação localmente.
-* [ ] O README deve incluir a configuração do Firebase, dependências necessárias e passos para executar o projeto.
+- [x] React Native para criar a aplicação, com boas práticas de performance e usabilidade.
+- [x] Uso de Expo para configuração inicial, navegação (Expo Router), acesso a APIs nativas e armazenamento seguro (expo-secure-store).
 
-### Vídeo Demonstrativo
+#### Gerenciamento de estado
 
-* [ ] Um vídeo de até 5 (cinco) minutos mostrando as principais funcionalidades da aplicação, incluindo:
-* [ ] Login e autenticação.
-* [ ] Adicionar/Editar transações.
-* [ ] Visualizar e filtrar transações.
-* [ ] Upload de anexos.
-* [ ] Integração com Firebase.
+- [x] Context API para gerenciar o estado global da aplicação, incluindo estado de autenticação e conta (AccountContext).
+
+#### Segurança e armazenamento
+
+- [x] Autenticação com senha hasheada (bcrypt) e persistência de sessão.
+- [x] Armazenamento seguro (Expo SecureStore com fallback para web).
+- [ ] Integração com Firebase (Firestore e Storage) para dados em cloud (previsto).
+
+---
+
+### Material para a entrega
+
+- [x] Link do repositório Git do projeto.
+- [x] README do projeto com informações para executá-lo em ambiente de desenvolvimento.
+- [ ] README incluindo configuração do Firebase, dependências necessárias e passos para executar (quando Firebase for integrado).
+- [ ] Vídeo demonstrativo de até 5 (cinco) minutos mostrando: login e autenticação; adicionar/editar transações; visualizar e filtrar transações; upload de anexos; integração com Firebase.
+
+---
+
+## 🔗 Acesso rápido (ambiente local)
+
+Após iniciar o projeto (veja **Getting Started** abaixo):
+
+| Plataforma | Comando / URL | Descrição |
+| :--- | :--- | :--- |
+| **📱 Expo Go** | `npx expo start` e escanear QR code | App no dispositivo físico. |
+| **🌐 Web** | `npx expo start --web` → `http://localhost:8081` | Versão web (React Native Web). |
+| **🤖 Android** | `npx expo start --android` | Emulador ou dispositivo Android. |
+| **🍎 iOS** | `npx expo start --ios` | Simulador ou dispositivo iOS (macOS). |
+
+---
+
+## ✨ Funcionalidades implementadas
+
+### 🔐 Autenticação e conta
+
+- Tela de login com modal **Entrar** (e-mail e senha).
+- Modal **Abra sua conta** com formulário de cadastro (nome completo, e-mail, senha, confirmação, termos).
+- Validação com Zod e React Hook Form; senhas hasheadas com bcrypt; verificação de e-mail já cadastrado.
+- Toasts de sucesso e erro (react-native-toast-message); redirecionamento para a home após login.
+- Persistência de sessão com Expo SecureStore (e fallback em `localStorage` na web).
+
+### 🏠 Navegação e layout
+
+- **Expo Router** (file-based routing): rota inicial, `(auth)/login`, `(tabs)/` (Dashboard e Transações).
+- Home pós-login com mensagem de boas-vindas e botão Sair.
+- Aba **Transações** com listagem e estrutura para criar/editar transações.
+- Layout responsivo: breakpoint de tablet em **480px** (reconhece Samsung Tab S FE e similares); hero em linha, grid de vantagens e footer centralizado em telas maiores.
+
+### 📦 Dados e estado
+
+- **AccountContext**: conta logada, login, logout e hidratação do storage.
+- Tipos e dados mock em `lib`; armazenamento seguro de lista de contas.
+
+---
+
+## 🛠 Tecnologias utilizadas
+
+| Área | Tecnologias |
+| :--- | :--- |
+| **Core** | React 19, React Native 0.81, Expo SDK 54 |
+| **Linguagem** | TypeScript 5 |
+| **Navegação** | Expo Router 6, React Navigation 7 |
+| **Formulários e validação** | React Hook Form, Zod, @hookform/resolvers |
+| **Estado** | Context API (AccountContext) |
+| **Segurança** | bcryptjs, expo-secure-store, crypto-js |
+| **UI e feedback** | expo-linear-gradient, react-native-toast-message, @expo/vector-icons |
+| **Layout** | React Native StyleSheet, breakpoint tablet (constants/layout) |
+
+---
+
+## 🚀 Getting Started – Como executar o projeto
+
+### Pré-requisitos
+
+- Node.js >= 18
+- npm >= 8
+- [Expo Go](https://expo.dev/go) instalado no celular (para testar no dispositivo) ou emulador Android/iOS
+
+### Instalação e execução
+
+```bash
+# Clone o repositório (se ainda não tiver)
+git clone <url-do-repositorio>
+cd tech-challenge-financeiro-terceira-fase
+
+# Instalar dependências
+npm install
+
+# Iniciar o app (Expo)
+npx expo start
+```
+
+A partir daí, use o QR code no terminal para abrir no **Expo Go** ou as teclas do CLI para abrir em **web**, **Android** ou **iOS**.
+
+### Scripts disponíveis
+
+```bash
+npm run start      # Inicia o Expo (equivalente a npx expo start)
+npm run android    # Inicia e abre no Android
+npm run ios        # Inicia e abre no iOS
+npm run web        # Inicia e abre no navegador
+npm run lint       # Executa o lint (expo lint)
+```
+
+---
+
+## 📂 Estrutura do projeto
+
+Formato enxuto, no estilo do desafio:
+
+```text
+tech-challenge-financeiro-terceira-fase/
+├── app/                          # Rotas (Expo Router)
+│   ├── _layout.tsx               # Layout raiz (Stack, AccountProvider, Toast)
+│   ├── index.tsx                 # Redireciona para login ou (tabs)
+│   ├── (auth)/
+│   │   ├── _layout.tsx           # Stack sem header (auth)
+│   │   └── login.tsx             # Tela de login + modais Entrar / Abra sua conta
+│   └── (tabs)/
+│       ├── _layout.tsx           # Bottom tabs (Dashboard, Transações)
+│       ├── index.tsx             # Home pós-login (Dashboard)
+│       └── transacoes.tsx       # Listagem e criação de transações
+├── components/                   # Componentes reutilizáveis
+│   ├── RegisterForm.tsx          # Formulário de cadastro (Zod + RHF)
+│   ├── TextInputField.tsx        # Input com ícone e erro
+│   ├── PrimaryButton.tsx         # Botão primário/outline
+│   ├── InfosCard.tsx             # Card de vantagens (login)
+│   ├── Checkbox.tsx              # Checkbox termos
+│   ├── FlatListBasics.tsx        # Lista de transações
+│   └── ...
+├── contexts/
+│   └── AccountContext.tsx        # Estado global (conta, login, logout)
+├── lib/                          # Utilitários e dados
+│   ├── auth.ts                   # bcrypt (hash, compare, migrate)
+│   ├── storage.ts                # SecureStore + fallback web
+│   ├── types.ts                  # Tipos (Account, etc.)
+│   └── mock-data.ts              # Contas e dados iniciais
+├── constants/
+│   └── layout.ts                 # TABLET_BREAKPOINT, MAX_CONTENT_WIDTH, FOOTER_HEIGHT
+├── assets/                       # Imagens e recursos
+├── package.json
+└── README.md
+```
+
+---
+
+## 📜 Referência do desafio (Fase 3)
+
+O enunciado do Tech Challenge Fase 3 prevê:
+
+- **Proposta:** aplicação de gerenciamento financeiro em React Native ou Flutter, com transações, navegação, segurança, autenticação e armazenamento em cloud.
+- **Dashboard:** gráficos e análises; animações entre seções.
+- **Listagem:** filtros avançados; scroll infinito ou paginação; integração com Cloud Firestore.
+- **Adicionar/Editar:** validação avançada; upload de recibos (Firebase Storage).
+- **Entrega:** repositório Git, README com instruções e configuração do Firebase, vídeo de até 5 minutos com login, CRUD de transações, filtros, upload de anexos e integração com Firebase.
+
+Este README foi elaborado com base no **POSTECH - Tech Challenge - Fase 3** e no formato do README da **Fase 2** do projeto Lumen Financeiro.
