@@ -134,16 +134,6 @@ npx expo start
 
 A partir daí, use o QR code no terminal para abrir no **Expo Go** ou as teclas do CLI para abrir em **web**, **Android** ou **iOS**.
 
-### Scripts disponíveis
-
-```bash
-npm run start      # Inicia o Expo (equivalente a npx expo start)
-npm run android    # Inicia e abre no Android
-npm run ios        # Inicia e abre no iOS
-npm run web        # Inicia e abre no navegador
-npm run lint       # Executa o lint (expo lint)
-```
-
 ---
 
 ## 📂 Estrutura do projeto
@@ -186,14 +176,13 @@ tech-challenge-financeiro-terceira-fase/
 
 ---
 
-## 📜 Referência do desafio (Fase 3)
+## 📜 Scripts Disponíveis
 
-O enunciado do Tech Challenge Fase 3 prevê:
-
-- **Proposta:** aplicação de gerenciamento financeiro em React Native ou Flutter, com transações, navegação, segurança, autenticação e armazenamento em cloud.
-- **Dashboard:** gráficos e análises; animações entre seções.
-- **Listagem:** filtros avançados; scroll infinito ou paginação; integração com Cloud Firestore.
-- **Adicionar/Editar:** validação avançada; upload de recibos (Firebase Storage).
-- **Entrega:** repositório Git, README com instruções e configuração do Firebase, vídeo de até 5 minutos com login, CRUD de transações, filtros, upload de anexos e integração com Firebase.
-
-Este README foi elaborado com base no **POSTECH - Tech Challenge - Fase 3** e no formato do README da **Fase 2** do projeto Lumen Financeiro.
+### Aplicação (Expo)
+```bash
+npm run start     # Inicia o Expo (npx expo start)
+npm run android   # Inicia e abre no emulador/dispositivo Android
+npm run ios       # Inicia e abre no simulador/dispositivo iOS
+npm run web       # Inicia e abre no navegador (React Native Web)
+npm run lint      # Executa linting (expo lint)
+```
