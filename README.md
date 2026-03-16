@@ -1,37 +1,30 @@
 # 📱 Lumen Financial - Mobile
 
-> Projeto desenvolvido como parte do Tech Challenge (Fase 3). Aplicação de gerenciamento financeiro em React Native (Expo), com autenticação, navegação e armazenamento seguro, alinhada aos requisitos e tecnologias da fase.
+> Projeto desenvolvido como parte do Tech Challenge (Fase 3). Uma aplicação de gerenciamento financeiro em React Native (Expo), com autenticação, navegação e armazenamento seguro (local seguro; cloud previsto para integração com Firebase).
 
 ---
 
 ## Tech Challenge - Fase 3: Requisitos do desafio
 
-### Proposta
-
-- [x] Desenvolver uma aplicação de gerenciamento financeiro, utilizando React Native ou Flutter Mobile.
-- [x] A aplicação deve ser capaz de gerenciar transações financeiras, integrando recursos de navegação, segurança, autenticação e armazenamento (local seguro; cloud previsto para integração com Firebase).
-
----
-
 ### Estrutura e requisitos das telas
 
 #### Tela Principal (Dashboard)
 
-- [x] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
+- [ ] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
 - [ ] Exibir gráficos e análises financeiras baseados nas transações do usuário.
 - [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
 
 #### Tela de Listagem de Transações
 
-- [x] Permitir ao usuário visualizar uma lista de transações.
+- [ ] Permitir ao usuário visualizar uma lista de transações.
 - [ ] Filtros avançados (por data, categoria, etc.).
 - [ ] Scroll infinito ou paginação para grandes volumes de dados.
 - [ ] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
 
 #### Tela de Adicionar/Editar Transação
 
-- [x] Estrutura para adicionar novas transações e editar transações existentes.
-- [x] Validação de campos com React Hook Form e Zod.
+- [ ] Estrutura para adicionar novas transações e editar transações existentes.
+- [ ] Validação de campos com React Hook Form e Zod.
 - [ ] Validação avançada de valor e categoria da transação.
 - [ ] Upload de Recibos: permitir o upload de recibos ou documentos relacionados à transação, salvando-os no Firebase Storage.
 
