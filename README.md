@@ -10,7 +10,7 @@
 
 #### Tela Principal (Dashboard)
 
-- [ ] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
+- [x] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
 - [ ] Exibir gráficos e análises financeiras baseados nas transações do usuário.
 - [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
 
@@ -183,6 +183,7 @@ tech-challenge-financeiro-terceira-fase/
 npm run start     # Inicia o Expo (npx expo start)
 npm run android   # Inicia e abre no emulador/dispositivo Android
 npm run ios       # Inicia e abre no simulador/dispositivo iOS
-npm run web       # Inicia e abre no navegador (React Native Web)
+npm run web       # Inicia e abre no navegador (atalho para npx expo start --web)
 npm run lint      # Executa linting (expo lint)
+npx expo start -c # Inicia o Expo limpando o cache (útil para resolver problemas de build/cache)
 ```
