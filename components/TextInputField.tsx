@@ -1,12 +1,11 @@
-import { Controller, Control, FieldError } from 'react-hook-form'
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { theme } from '@/theme/colors'
+import { Control, Controller, FieldError } from 'react-hook-form'
+import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native'
 
 interface TextInputFieldProps extends TextInputProps {
   name: string
   control: Control<any>
-  label: string
+  label?: string
   icon?: React.ComponentProps<typeof Ionicons>['name']
   error?: FieldError
 }
@@ -21,7 +20,8 @@ export function TextInputField({
 }: TextInputFieldProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label && <Text style={styles.label}>{label}</Text>}
+
       <View style={styles.inputWrapper}>
         {icon ? (
           <Ionicons
