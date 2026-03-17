@@ -71,6 +71,10 @@ export default function LoginScreen() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   })
 
   useEffect(() => {
@@ -124,6 +128,9 @@ export default function LoginScreen() {
             )
             await setSecureItem('accountsList', updatedList)
           }
+
+          // Persistir a conta atual imediatamente ao fazer login
+          await setSecureItem('currentAccount', accountRegistered[0])
 
           setIsLoginModalOpen(false)
           Toast.show({

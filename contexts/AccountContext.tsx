@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import Toast from 'react-native-toast-message'
 import type { Account, Transaction } from '@/lib/types'
 import { mockAccounts } from '@/lib/mock-data'
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage'
@@ -33,34 +34,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     void hydrate()
   }, [])
 
-  useEffect(() => {
-    if (!account) return
-
-    const persist = async () => {
-      await setSecureItem('currentAccount', account)
-
-      let list: Account[] = []
-      try {
-        const storedList = (await getSecureItem<Account[]>('accountsList')) || []
-        if (!Array.isArray(storedList) || storedList.length === 0) {
-          list = mockAccounts
-        } else {
-          list = storedList
-        }
-      } catch {
-        list = mockAccounts
-      }
-
-      const updatedList = list.map((acc) =>
-        acc.accountNumber === account.accountNumber ? account : acc,
-      )
-      await setSecureItem('accountsList', updatedList)
-    }
-
-    void persist()
-  }, [account])
-
   const login = async (accountData: Account) => {
+    // Atualiza o estado em memória
     setAccount(accountData)
   }
 
@@ -70,17 +45,29 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }
 
   const addTransaction = (transactionData: Omit<Transaction, 'id'>) => {
+    const newTransaction: Transaction = {
+      ...transactionData,
+      id: Date.now().toString(),
+    }
+    if (account && newTransaction.amount < 0 && account.balance + newTransaction.amount < 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Saldo insuficiente',
+        text2: 'Você não possui saldo suficiente para realizar esta operação.',
+      })
+      return
+    }
     setAccount((prev) => {
       if (!prev) return prev
-      const newTransaction: Transaction = {
-        ...transactionData,
-        id: Date.now().toString(),
-      }
       return {
         ...prev,
         balance: prev.balance + newTransaction.amount,
         transactions: [newTransaction, ...prev.transactions],
       }
+    })
+    Toast.show({
+      type: 'success',
+      text1: 'Transação adicionada com sucesso',
     })
   }
 
@@ -88,25 +75,57 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     id: string,
     updatedData: Partial<Omit<Transaction, 'id'>>,
   ) => {
+    const currentAccount = account
+    if (!currentAccount) return
+    const transactionToUpdate = currentAccount.transactions.find((t) => t.id === id)
+    if (!transactionToUpdate) return
+    const oldAmount = transactionToUpdate.amount
+    const newAmount = updatedData.amount ?? oldAmount
+    const balanceDifference = newAmount - oldAmount
+    const potentialNewBalance = currentAccount.balance + balanceDifference
+    if (potentialNewBalance < 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Saldo insuficiente',
+        text2: 'Você não possui saldo suficiente para realizar esta operação.',
+      })
+      return
+    }
     setAccount((prev) => {
       if (!prev) return prev
-      const transactions = prev.transactions.map((t) =>
-        t.id === id ? { ...t, ...updatedData, id } : t,
-      )
+      let balanceDiff = 0
+      const newTransactions = prev.transactions.map((t) => {
+        if (t.id === id) {
+          const prevAmount = t.amount
+          const nextAmount = updatedData.amount ?? prevAmount
+          balanceDiff = nextAmount - prevAmount
+          return { ...t, ...updatedData, id }
+        }
+        return t
+      })
       return {
         ...prev,
-        transactions,
+        balance: prev.balance + balanceDiff,
+        transactions: newTransactions,
       }
+    })
+    Toast.show({
+      type: 'success',
+      text1: 'Transação atualizada com sucesso',
     })
   }
 
   const deleteTransaction = (id: string) => {
     setAccount((prev) => {
       if (!prev) return prev
-      const transactions = prev.transactions.filter((t) => t.id !== id)
+      const transactionToDelete = prev.transactions.find((t) => t.id === id)
+      if (!transactionToDelete) return prev
+      const newTransactions = prev.transactions.filter((t) => t.id !== id)
+      const newBalance = prev.balance - transactionToDelete.amount
       return {
         ...prev,
-        transactions,
+        balance: newBalance,
+        transactions: newTransactions,
       }
     })
   }
