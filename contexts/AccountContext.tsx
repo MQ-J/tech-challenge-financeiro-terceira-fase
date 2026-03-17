@@ -34,12 +34,57 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     void hydrate()
   }, [])
 
+  // Sempre que a conta mudar, persistir currentAccount e sincronizar accountsList
+  useEffect(() => {
+    const persist = async () => {
+      if (account === null) {
+        console.log('[AccountContext.persist] account=null (não altera currentAccount)')
+        return
+      }
+
+      // Salvar conta atual
+      console.log(
+        '[AccountContext.persist] salvando currentAccount para',
+        account.email,
+      )
+      await setSecureItem('currentAccount', account)
+
+      // Sincronizar lista de contas
+      let list: Account[] = []
+      try {
+        const storedList =
+          (await getSecureItem<Account[]>('accountsList')) || []
+        if (!Array.isArray(storedList) || storedList.length === 0) {
+          list = mockAccounts
+        } else {
+          list = storedList
+        }
+      } catch {
+        list = mockAccounts
+      }
+
+      const exists = list.some(
+        (acc) => acc.accountNumber === account.accountNumber,
+      )
+      const updatedList = exists
+        ? list.map((acc) =>
+            acc.accountNumber === account.accountNumber ? account : acc,
+          )
+        : [...list, account]
+
+      await setSecureItem('accountsList', updatedList)
+    }
+
+    void persist()
+  }, [account])
+
   const login = async (accountData: Account) => {
-    // Atualiza o estado em memória
+    // Atualiza o estado em memória; efeito acima se encarrega de persistir
     setAccount(accountData)
   }
 
   const logout = async () => {
+    console.log('[AccountContext.logout] limpando currentAccount')
     setAccount(null)
     await removeSecureItem('currentAccount')
   }

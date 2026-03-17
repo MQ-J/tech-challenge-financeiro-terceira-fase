@@ -78,18 +78,8 @@ export default function LoginScreen() {
   })
 
   useEffect(() => {
-    let cancelled = false
-    const init = async () => {
-      if (!cancelled) {
-        await logout()
-        setIsMounted(true)
-      }
-    }
-    void init()
-    return () => {
-      cancelled = true
-    }
-  }, [logout])
+    setIsMounted(true)
+  }, [])
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
