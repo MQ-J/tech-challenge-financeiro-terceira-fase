@@ -1,13 +1,39 @@
-import FlatListBasics from '@/components/FlatListBasics';
-import { StyleSheet, Text, View } from 'react-native';
+import { TextInputField } from '@/components/TextInputField';
+import TransactionsList from '@/components/TransactionsList';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { StyleSheet, View } from 'react-native';
+import z from 'zod';
+
+const filtroSchema = z.object({
+  filtro: z.string(),
+})
+
+type LoginFormValues = z.infer<typeof filtroSchema>
 
 export default function TransactionsScreen() {
+
+  const {
+    control,
+    watch,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(filtroSchema),
+  })
+
   return (
     <View style={styles.container}>
-      <View style={styles.textContainer}>
-        <Text style={styles.text}>Listar e criar transações</Text>
+      <View style={styles.filterContainer}>
+       <TextInputField
+          name="filtro"
+          control={control}
+          autoCapitalize="none"
+          icon="search"
+          error={errors.filtro}
+          placeholder="Digite sua busca"
+        />
       </View>
-      <FlatListBasics/>
+      <TransactionsList filtro={watch('filtro')}/>
     </View>
   );
 }
@@ -17,11 +43,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#25292e',
   },
-  textContainer: {
-    flex: 1,
-    backgroundColor: '#25292e',
-    justifyContent: 'center',
-    alignItems: 'center',
+  filterContainer: {
+    height: 80,
+    marginHorizontal: 16,
   },
   text: {
     color: '#fff',
