@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native'
+import React, { useEffect, useRef } from 'react'
+import { Animated, Text, StyleSheet } from 'react-native'
 import type { Transaction } from '@/lib/types'
 import { formatCurrency, formatDate, formatMonth } from '@/lib/format'
 
@@ -19,17 +20,35 @@ export function RecentTransactionRow({ transaction }: RecentTransactionRowProps)
   const displayValue = formatCurrency(Math.abs(transaction.amount))
   const valuePrefix = transaction.amount >= 0 ? '' : '-'
 
+  const opacity = useRef(new Animated.Value(0)).current
+  const translateY = useRef(new Animated.Value(8)).current
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start()
+  }, [opacity, translateY])
+
   return (
-    <View style={styles.row}>
-      <View style={styles.left}>
+    <Animated.View style={[styles.row, { opacity, transform: [{ translateY }] }]}>
+      <Animated.View style={styles.left}>
         <Text style={styles.month}>{formatMonth(transaction.date)}</Text>
         <Text style={styles.label}>{label}</Text>
         <Text style={[styles.amount, isPositive ? styles.amountPositive : styles.amountNegative]}>
           {valuePrefix}{displayValue}
         </Text>
-      </View>
+      </Animated.View>
       <Text style={styles.date}>{formatDate(transaction.date)}</Text>
-    </View>
+    </Animated.View>
   )
 }
 

@@ -1,8 +1,9 @@
+import React, { useEffect, useRef } from 'react';
 import { TextInputField } from '@/components/TextInputField';
 import TransactionsList from '@/components/TransactionsList';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Animated } from 'react-native';
 import z from 'zod';
 
 const filtroSchema = z.object({
@@ -21,8 +22,26 @@ export default function TransactionsScreen() {
     resolver: zodResolver(filtroSchema),
   })
 
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(16)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [opacity, translateY]);
+
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
       <View style={styles.filterContainer}>
        <TextInputField
           name="filtro"
@@ -34,7 +53,7 @@ export default function TransactionsScreen() {
         />
       </View>
       <TransactionsList filtro={watch('filtro')}/>
-    </View>
+    </Animated.View>
   );
 }
 
