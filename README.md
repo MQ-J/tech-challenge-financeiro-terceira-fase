@@ -104,8 +104,8 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 | **Navegação** | Expo Router 6, React Navigation 7 |
 | **Formulários e validação** | React Hook Form, Zod, @hookform/resolvers |
 | **Estado** | Context API (AccountContext) |
-| **Segurança** | bcryptjs, expo-secure-store, crypto-js |
-| **UI e feedback** | expo-linear-gradient, react-native-toast-message, @expo/vector-icons |
+| **Segurança** | react-native-bcrypt, expo-secure-store, crypto-js |
+| **UI e feedback** | expo-linear-gradient, react-native-toast-message, @expo/vector-icons, react-native-svg, react-native-gifted-charts |
 | **Layout** | React Native StyleSheet, breakpoint tablet (constants/layout) |
 
 ---

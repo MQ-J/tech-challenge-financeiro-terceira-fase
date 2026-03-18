@@ -6,7 +6,8 @@ import { BalanceCard } from '@/components/BalanceCard'
 import { TransactionForm } from '@/components/TransactionForm'
 import { RecentTransactions } from '@/components/RecentTransactions'
 import { useRouter } from 'expo-router'
-import { MAX_CONTENT_WIDTH } from '@/constants/layout'
+import { MAX_CONTENT_WIDTH, isTabletLayout } from '@/constants/layout'
+import { ChartsNative } from '@/components/charts/ChartsNative'
 import { getSecureItem } from '@/lib/storage'
 import type { Account } from '@/lib/types'
 
@@ -28,6 +29,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions()
   const contentWidth = Math.min(width - 32, MAX_CONTENT_WIDTH)
   const centered = width > MAX_CONTENT_WIDTH
+  const isTablet = isTabletLayout(width)
 
   console.log('[HomeScreen] isHydrated=', isHydrated, 'account=', account?.email)
 
@@ -102,9 +104,25 @@ export default function HomeScreen() {
           <RecentTransactions />
         </View>
 
-        <View style={styles.placeholderCharts}>
-          <Text style={styles.placeholderText}>Gráficos em breve</Text>
-        </View>
+        {isTablet ? (
+          <View style={[styles.chartsRow, styles.chartsRowTablet]}>
+            <View style={[styles.chartItem, styles.chartItemTablet]}>
+              <ChartsNative type="Bar" transactions={account.transactions} />
+            </View>
+            <View style={[styles.chartItem, styles.chartItemTablet]}>
+              <ChartsNative type="Pie" transactions={account.transactions} />
+            </View>
+          </View>
+        ) : (
+          <>
+            <View style={styles.chartItem}>
+              <ChartsNative type="Bar" transactions={account.transactions} />
+            </View>
+            <View style={styles.chartItem}>
+              <ChartsNative type="Pie" transactions={account.transactions} />
+            </View>
+          </>
+        )}
 
         <PrimaryButton
           label="Sair"
@@ -189,19 +207,21 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 16,
   },
-  placeholderCharts: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    padding: 32,
+  chartsRow: {
+    flexDirection: 'row',
     marginBottom: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
-  placeholderText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
+  chartItem: {
+    marginBottom: 16,
+  },
+  chartsRowTablet: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  chartItemTablet: {
+    flex: 1,
+    marginBottom: 0,
+    marginRight: 16,
   },
   logoutButton: {
     marginTop: 8,
