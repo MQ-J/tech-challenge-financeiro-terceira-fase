@@ -11,7 +11,7 @@
 #### Tela Principal (Dashboard)
 
 - [x] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
-- [ ] Exibir gráficos e análises financeiras baseados nas transações do usuário.
+- [x] Exibir gráficos e análises financeiras baseados nas transações do usuário.
 - [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
 
 #### Tela de Listagem de Transações
