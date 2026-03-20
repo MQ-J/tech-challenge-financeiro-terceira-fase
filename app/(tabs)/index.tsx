@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Animated } from 'react-native'
 import { useIsFocused } from '@react-navigation/native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAccount } from '@/contexts/AccountContext'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { BalanceCard } from '@/components/BalanceCard'
@@ -150,15 +151,15 @@ export default function HomeScreen() {
 
   if (!isHydrated) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
         <ActivityIndicator size="large" color="#ffd33d" />
-      </View>
+      </SafeAreaView>
     )
   }
 
   if (!account) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
         <Text style={styles.emptyTitle}>Nenhuma conta carregada</Text>
         <Text style={styles.emptySubtitle}>
           Volte para a tela de login para acessar sua conta.
@@ -169,21 +170,22 @@ export default function HomeScreen() {
           style={styles.emptyButton}
           iconName="log-in-outline"
         />
-      </View>
+      </SafeAreaView>
     )
   }
 
   const firstName = account.userName.split(' ')[0] ?? ''
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.scrollContent,
-        centered && { alignItems: 'center' },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
+    <SafeAreaView style={styles.safeRoot} edges={['top']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          centered && { alignItems: 'center' },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={[styles.content, { width: contentWidth }]}>
         <Animated.View
           style={[
@@ -258,11 +260,16 @@ export default function HomeScreen() {
           iconName="log-out-outline"
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  safeRoot: {
+    flex: 1,
+    backgroundColor: '#25292e',
+  },
   scroll: {
     flex: 1,
     backgroundColor: '#25292e',

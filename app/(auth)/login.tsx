@@ -10,6 +10,7 @@ import {
   Pressable,
 } from 'react-native'
 import Toast from 'react-native-toast-message'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import {
@@ -41,6 +42,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const tablet = isTabletLayout(width)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
@@ -163,7 +165,10 @@ export default function LoginScreen() {
         style={[
           styles.header,
           styles.headerBlack,
-          { paddingHorizontal: paddingH },
+          {
+            paddingHorizontal: paddingH,
+            paddingTop: Math.max(insets.top, tablet ? 16 : 12),
+          },
           tablet && styles.headerTablet,
         ]}
       >
@@ -209,7 +214,7 @@ export default function LoginScreen() {
             styles.scrollContent,
             {
               paddingHorizontal: paddingH,
-              paddingBottom: FOOTER_HEIGHT,
+              paddingBottom: FOOTER_HEIGHT + insets.bottom + (tablet ? 20 : 16),
               alignItems: contentCentered ? 'center' : 'stretch',
             },
           ]}
@@ -307,7 +312,8 @@ export default function LoginScreen() {
           styles.footer,
           styles.footerFixed,
           {
-            paddingVertical: tablet ? 20 : 16,
+            paddingTop: tablet ? 20 : 16,
+            paddingBottom: (tablet ? 20 : 16) + insets.bottom,
             paddingHorizontal: paddingH,
             alignItems: 'center',
           },
@@ -467,7 +473,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
     paddingBottom: 16,
     flexWrap: 'wrap',
     gap: 8,
@@ -476,7 +481,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   headerTablet: {
-    paddingVertical: 16,
+    paddingBottom: 20,
   },
   gradientWrapper: {
     flex: 1,

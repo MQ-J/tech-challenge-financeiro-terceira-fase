@@ -87,6 +87,7 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 - Home pós-login com mensagem de boas-vindas e botão Sair.
 - Aba **Transações** com listagem e estrutura para criar/editar transações.
 - Layout responsivo: breakpoint de tablet em **480px** (reconhece Samsung Tab S FE e similares); hero em linha, grid de vantagens e footer centralizado em telas maiores.
+- **Áreas seguras (notch / status bar / barra de gestos)**: `SafeAreaProvider` no layout raiz; login com `useSafeAreaInsets` no header e footer fixo; abas com `paddingBottom`/`height` da tab bar conforme inset inferior; Home e Transações com `SafeAreaView` no topo para não sobrepor hora e ícones do sistema.
 - **Animações do dashboard**: API **`Animated`** do React Native (`react-native`), com **`useNativeDriver: true`** em opacidade e `translateY` (execução no thread nativo quando suportado). Entrada em sequência (stagger) na Home e fade + slide na aba Transações; as animações **rodam de novo sempre que a aba ganha foco**, usando **`useIsFocused`** do pacote **`@react-navigation/native`** (já trazido pelo Expo Router / React Navigation). Não há pacote separado “native-animated”: o recurso faz parte do core do React Native.
 
 ### 📦 Dados e estado
@@ -108,7 +109,7 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 | **Estado** | Context API (AccountContext) |
 | **Segurança** | react-native-bcrypt, expo-secure-store, crypto-js |
 | **UI e feedback** | expo-linear-gradient, react-native-toast-message, @expo/vector-icons, react-native-svg, react-native-gifted-charts |
-| **Layout** | React Native StyleSheet, breakpoint tablet (constants/layout) |
+| **Layout** | React Native StyleSheet, breakpoint tablet (constants/layout), `react-native-safe-area-context` (SafeAreaProvider / SafeAreaView / insets) |
 | **Outras libs RN (Expo)** | `react-native-reanimated` (stack Expo; animações do dashboard usam `Animated` nativo) |
 
 ---

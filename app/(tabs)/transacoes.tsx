@@ -5,6 +5,7 @@ import TransactionsList from '@/components/TransactionsList';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { StyleSheet, View, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import z from 'zod';
 
 const filtroSchema = z.object({
@@ -60,23 +61,29 @@ export default function TransactionsScreen() {
   }, [isFocused, opacity, translateY]);
 
   return (
-    <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
-      <View style={styles.filterContainer}>
-       <TextInputField
-          name="filtro"
-          control={control}
-          autoCapitalize="none"
-          icon="search"
-          error={errors.filtro}
-          placeholder="Digite sua busca"
-        />
-      </View>
-      <TransactionsList filtro={watch('filtro')}/>
-    </Animated.View>
+    <SafeAreaView style={styles.safeRoot} edges={['top']}>
+      <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
+        <View style={styles.filterContainer}>
+          <TextInputField
+            name="filtro"
+            control={control}
+            autoCapitalize="none"
+            icon="search"
+            error={errors.filtro}
+            placeholder="Digite sua busca"
+          />
+        </View>
+        <TransactionsList filtro={watch('filtro')} />
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeRoot: {
+    flex: 1,
+    backgroundColor: '#25292e',
+  },
   container: {
     flex: 1,
     backgroundColor: '#25292e',
