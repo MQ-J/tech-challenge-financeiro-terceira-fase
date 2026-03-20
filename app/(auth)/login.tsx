@@ -70,6 +70,7 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -82,6 +83,13 @@ export default function LoginScreen() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Ao fechar o modal Entrar (qualquer forma), zera e-mail, senha e erros do formulário
+  useEffect(() => {
+    if (!isLoginModalOpen) {
+      reset({ email: '', password: '' })
+    }
+  }, [isLoginModalOpen, reset])
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
