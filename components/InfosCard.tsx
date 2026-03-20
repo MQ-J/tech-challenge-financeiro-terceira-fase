@@ -43,14 +43,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignSelf: 'center',
+    maxWidth: '100%',
     gap: 8,
     marginBottom: 6,
   },
   title: {
     color: theme.textInfos,
-    textAlign: 'center',
+    /* Android: Text em row pode expandir; textAlign center centraliza dentro da caixa larga. */
+    textAlign: 'left',
     fontSize: 16,
     fontWeight: '600',
+    flexGrow: 0,
+    flexShrink: 1,
+    minWidth: 0,
   },
   description: {
     fontSize: 14,
