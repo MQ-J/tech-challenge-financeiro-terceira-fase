@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { TextInputField } from '@/components/TextInputField';
 import TransactionsList from '@/components/TransactionsList';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,11 +23,23 @@ export default function TransactionsScreen() {
     resolver: zodResolver(filtroSchema),
   })
 
+  const isFocused = useIsFocused();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(16)).current;
+  const enterAnimation = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    Animated.parallel([
+    if (!isFocused) {
+      enterAnimation.current?.stop();
+      return;
+    }
+
+    enterAnimation.current?.stop();
+
+    opacity.setValue(0);
+    translateY.setValue(16);
+
+    const anim = Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
         duration: 260,
@@ -37,8 +50,14 @@ export default function TransactionsScreen() {
         duration: 260,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [opacity, translateY]);
+    ]);
+    enterAnimation.current = anim;
+    anim.start();
+
+    return () => {
+      anim.stop();
+    };
+  }, [isFocused, opacity, translateY]);
 
   return (
     <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>

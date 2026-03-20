@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Animated } from 'react-native'
+import { useIsFocused } from '@react-navigation/native'
 import { useAccount } from '@/contexts/AccountContext'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { BalanceCard } from '@/components/BalanceCard'
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   const contentWidth = Math.min(width - 32, MAX_CONTENT_WIDTH)
   const centered = width > MAX_CONTENT_WIDTH
   const isTablet = isTabletLayout(width)
+  const isFocused = useIsFocused()
 
   const headerOpacity = useRef(new Animated.Value(0)).current
   const headerTranslateY = useRef(new Animated.Value(16)).current
@@ -39,6 +41,7 @@ export default function HomeScreen() {
   const transactionsTranslateY = useRef(new Animated.Value(16)).current
   const chartsOpacity = useRef(new Animated.Value(0)).current
   const chartsTranslateY = useRef(new Animated.Value(16)).current
+  const homeEnterAnimation = useRef<Animated.CompositeAnimation | null>(null)
 
   console.log('[HomeScreen] isHydrated=', isHydrated, 'account=', account?.email)
 
@@ -54,9 +57,23 @@ export default function HomeScreen() {
   }, [account, isHydrated, login])
 
   useEffect(() => {
-    if (!isHydrated || !account) return
+    if (!isHydrated || !account || !isFocused) {
+      homeEnterAnimation.current?.stop()
+      return
+    }
 
-    Animated.stagger(100, [
+    homeEnterAnimation.current?.stop()
+
+    headerOpacity.setValue(0)
+    headerTranslateY.setValue(16)
+    balanceOpacity.setValue(0)
+    balanceTranslateY.setValue(16)
+    transactionsOpacity.setValue(0)
+    transactionsTranslateY.setValue(16)
+    chartsOpacity.setValue(0)
+    chartsTranslateY.setValue(16)
+
+    const anim = Animated.stagger(100, [
       Animated.parallel([
         Animated.timing(headerOpacity, {
           toValue: 1,
@@ -105,10 +122,17 @@ export default function HomeScreen() {
           useNativeDriver: true,
         }),
       ]),
-    ]).start()
+    ])
+    homeEnterAnimation.current = anim
+    anim.start()
+
+    return () => {
+      anim.stop()
+    }
   }, [
     account,
     isHydrated,
+    isFocused,
     headerOpacity,
     headerTranslateY,
     balanceOpacity,
