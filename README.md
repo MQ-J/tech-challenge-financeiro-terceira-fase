@@ -87,6 +87,7 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 - Home pós-login com mensagem de boas-vindas e botão Sair.
 - Aba **Transações** com listagem e estrutura para criar/editar transações.
 - Layout responsivo: breakpoint de tablet em **480px** (reconhece Samsung Tab S FE e similares); hero em linha, grid de vantagens e footer centralizado em telas maiores.
+- **Animações do dashboard**: API **`Animated`** do React Native (`react-native`), com **`useNativeDriver: true`** em opacidade e `translateY` (execução no thread nativo quando suportado). Entrada em sequência (stagger) na Home e fade + slide na aba Transações; as animações **rodam de novo sempre que a aba ganha foco**, usando **`useIsFocused`** do pacote **`@react-navigation/native`** (já trazido pelo Expo Router / React Navigation). Não há pacote separado “native-animated”: o recurso faz parte do core do React Native.
 
 ### 📦 Dados e estado
 
@@ -101,12 +102,14 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 | :--- | :--- |
 | **Core** | React 19, React Native 0.81, Expo SDK 54 |
 | **Linguagem** | TypeScript 5 |
-| **Navegação** | Expo Router 6, React Navigation 7 |
+| **Navegação** | Expo Router 6, React Navigation 7 (`@react-navigation/native`, bottom tabs) |
+| **Animações (dashboard)** | React Native `Animated` + `useNativeDriver`; foco de aba com `useIsFocused` (`@react-navigation/native`) |
 | **Formulários e validação** | React Hook Form, Zod, @hookform/resolvers |
 | **Estado** | Context API (AccountContext) |
 | **Segurança** | react-native-bcrypt, expo-secure-store, crypto-js |
 | **UI e feedback** | expo-linear-gradient, react-native-toast-message, @expo/vector-icons, react-native-svg, react-native-gifted-charts |
 | **Layout** | React Native StyleSheet, breakpoint tablet (constants/layout) |
+| **Outras libs RN (Expo)** | `react-native-reanimated` (stack Expo; animações do dashboard usam `Animated` nativo) |
 
 ---
 
