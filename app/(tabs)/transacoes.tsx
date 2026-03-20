@@ -1,28 +1,23 @@
-import React, { useEffect, useRef } from 'react';
-import { useIsFocused } from '@react-navigation/native';
-import { TextInputField } from '@/components/TextInputField';
+import { TransactionForm } from '@/components/TransactionForm';
 import TransactionsList from '@/components/TransactionsList';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { StyleSheet, View, Animated } from 'react-native';
+import type { Transaction } from '@/lib/types';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useIsFocused } from '@react-navigation/native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import z from 'zod';
-
-const filtroSchema = z.object({
-  filtro: z.string(),
-})
-
-type LoginFormValues = z.infer<typeof filtroSchema>
 
 export default function TransactionsScreen() {
-
-  const {
-    control,
-    watch,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(filtroSchema),
-  })
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const isFocused = useIsFocused();
   const opacity = useRef(new Animated.Value(0)).current;
@@ -36,7 +31,6 @@ export default function TransactionsScreen() {
     }
 
     enterAnimation.current?.stop();
-
     opacity.setValue(0);
     translateY.setValue(16);
 
@@ -60,21 +54,58 @@ export default function TransactionsScreen() {
     };
   }, [isFocused, opacity, translateY]);
 
+  const openAdd = () => {
+    setEditingTransaction(null);
+    setModalVisible(true);
+  };
+
+  const openEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setEditingTransaction(null);
+  };
+
   return (
     <SafeAreaView style={styles.safeRoot} edges={['top']}>
       <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
-        <View style={styles.filterContainer}>
-          <TextInputField
-            name="filtro"
-            control={control}
-            autoCapitalize="none"
-            icon="search"
-            error={errors.filtro}
-            placeholder="Digite sua busca"
-          />
-        </View>
-        <TransactionsList filtro={watch('filtro')} />
+        <TransactionsList onEdit={openEdit} />
       </Animated.View>
+
+      {/* FAB */}
+      <Pressable style={styles.fab} onPress={openAdd}>
+        <Ionicons name="add" size={28} color="#25292e" />
+      </Pressable>
+
+      {/* Add / Edit Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        onRequestClose={closeModal}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {editingTransaction ? 'Editar Transação' : 'Nova Transação'}
+            </Text>
+            <Pressable onPress={closeModal} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#333" />
+            </Pressable>
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.modalBody}
+            keyboardShouldPersistTaps="handled"
+          >
+            <TransactionForm
+              transaction={editingTransaction ?? undefined}
+              onSuccess={closeModal}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -88,11 +119,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#25292e',
   },
-  filterContainer: {
-    height: 80,
-    marginHorizontal: 16,
+  fab: {
+    position: 'absolute',
+    bottom: 28,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#ffd33d',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
-  text: {
-    color: '#fff',
+  modalSafe: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 20,
   },
 });

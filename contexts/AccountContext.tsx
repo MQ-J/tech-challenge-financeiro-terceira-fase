@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import Toast from 'react-native-toast-message'
-import type { Account, Transaction } from '@/lib/types'
 import { mockAccounts } from '@/lib/mock-data'
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage'
+import type { Account, Transaction } from '@/lib/types'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import Toast from 'react-native-toast-message'
 
 interface AccountContextType {
   account: Account | null
@@ -74,7 +74,6 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }, [account])
 
   const login = async (accountData: Account) => {
-    // Atualiza o estado em memória; efeito acima se encarrega de persistir
     setAccount(accountData)
   }
 

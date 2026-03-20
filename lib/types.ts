@@ -6,6 +6,7 @@ export interface Transaction {
   amount: number
   date: string
   description?: string
+  receiptUrl?: string
 }
 
 export interface Account {
