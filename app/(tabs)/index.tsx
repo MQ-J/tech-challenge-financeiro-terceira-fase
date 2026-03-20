@@ -44,8 +44,6 @@ export default function HomeScreen() {
   const chartsTranslateY = useRef(new Animated.Value(16)).current
   const homeEnterAnimation = useRef<Animated.CompositeAnimation | null>(null)
 
-  console.log('[HomeScreen] isHydrated=', isHydrated, 'account=', account?.email)
-
   useEffect(() => {
     if (!isHydrated || account) return
     const rehydrate = async () => {

@@ -38,15 +38,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const persist = async () => {
       if (account === null) {
-        console.log('[AccountContext.persist] account=null (não altera currentAccount)')
         return
       }
 
       // Salvar conta atual
-      console.log(
-        '[AccountContext.persist] salvando currentAccount para',
-        account.email,
-      )
       await setSecureItem('currentAccount', account)
 
       // Sincronizar lista de contas
@@ -84,7 +79,6 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    console.log('[AccountContext.logout] limpando currentAccount')
     setAccount(null)
     await removeSecureItem('currentAccount')
   }
