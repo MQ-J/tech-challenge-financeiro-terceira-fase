@@ -12,7 +12,7 @@
 
 - [x] Exibir informações do usuário logado e acesso às funcionalidades (home do canal).
 - [x] Exibir gráficos e análises financeiras baseados nas transações do usuário.
-- [ ] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
+- [x] Implementar animações para transições entre seções do dashboard utilizando Animated (React Native) ou animações nativas do Flutter.
 
 #### Tela de Listagem de Transações
 
