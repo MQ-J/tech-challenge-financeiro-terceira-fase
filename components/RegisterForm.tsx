@@ -4,13 +4,11 @@ import Toast from 'react-native-toast-message'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { FirebaseError } from 'firebase/app'
 import { TextInputField } from '@/components/TextInputField'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { Checkbox } from '@/components/Checkbox'
-import { mockAccounts } from '@/lib/mock-data'
-import { getSecureItem, setSecureItem } from '@/lib/storage'
-import { hashPassword } from '@/lib/auth'
-import type { Account } from '@/lib/types'
+import { useAuth } from '@/contexts/AuthContext'
 
 const registerSchema = z
   .object({
@@ -41,8 +39,28 @@ interface RegisterFormProps {
   onSuccess: () => void
 }
 
+function firebaseAuthErrorMessage(code: string): string {
+  switch (code) {
+    case 'auth/configuration-not-found':
+      return 'Authentication não está ativo no Firebase Console (veja docs/firebase-phase-a1-console.md).'
+    case 'auth/invalid-api-key':
+      return 'API Key inválida ou de outro projeto. Confira Configurações do projeto → app Web.'
+    case 'auth/email-already-in-use':
+      return 'Este e-mail já está cadastrado.'
+    case 'auth/invalid-email':
+      return 'E-mail inválido.'
+    case 'auth/weak-password':
+      return 'Senha muito fraca. Use pelo menos 6 caracteres.'
+    case 'auth/network-request-failed':
+      return 'Falha de rede. Verifique sua conexão.'
+    default:
+      return 'Não foi possível concluir o cadastro. Tente novamente.'
+  }
+}
+
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const { signUp } = useAuth()
 
   const {
     control,
@@ -83,61 +101,33 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   async function handleRegister(data: RegisterFormValues) {
     setIsLoading(true)
 
-    let list: Account[]
-
     try {
-      const storedList =
-        (await getSecureItem<Account[]>('accountsList')) || mockAccounts
-      list =
-        Array.isArray(storedList) && storedList.length > 0
-          ? storedList
-          : mockAccounts
-    } catch {
-      list = mockAccounts
-    }
-
-    const accountExists = list.some((account) => account.email === data.email)
-
-    if (accountExists) {
+      await signUp(data.email, data.password, {
+        userName: data.nome.trim(),
+        onRegistered: () => {
+          Toast.show({
+            type: 'success',
+            text1: 'Conta criada com sucesso!',
+            text2: 'O (a) cliente já pode realizar o login.',
+          })
+          onSuccess()
+          reset()
+          clearErrors()
+        },
+      })
+    } catch (e) {
+      const message =
+        e instanceof FirebaseError
+          ? firebaseAuthErrorMessage(e.code)
+          : 'Não foi possível concluir o cadastro. Tente novamente.'
       Toast.show({
         type: 'error',
-        text1: 'Não é possível fazer o cadastro com o e-mail solicitado',
-        text2: 'Este e-mail já está em uso.',
+        text1: 'Cadastro',
+        text2: message,
       })
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    const randomNumber = Math.floor(Math.random() * 10000)
-    const randomString = randomNumber.toString().padStart(4, '0') + '-1'
-
-    const hashedPassword = await hashPassword(data.password)
-
-    const newAccount: Account = {
-      balance: 0,
-      accountNumber: randomString,
-      userName: data.nome,
-      email: data.email,
-      password: hashedPassword,
-      transactions: [],
-    }
-
-    list.push(newAccount)
-    await setSecureItem('accountsList', list)
-
-    Toast.show({
-      type: 'success',
-      text1: 'Conta criada com sucesso!',
-      text2: 'O (a) cliente já pode realizar o login.',
-    })
-
-    setIsLoading(false)
-
-    setTimeout(() => {
-      onSuccess()
-      reset()
-      clearErrors()
-    }, 1500)
   }
 
   return (
