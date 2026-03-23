@@ -1,8 +1,11 @@
 import { auth } from '@/firebase/config'
 import { db } from '@/lib/firebase'
-import type { FirestoreUserProfile } from '@/lib/types'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
+import type { Account, FirestoreUserProfile } from '@/lib/types'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { useRouter } from 'expo-router'
 import React, { createContext, useCallback, useContext, useMemo } from 'react'
 
@@ -19,6 +22,8 @@ type AuthContextValue = {
     password: string,
     meta?: SignUpMeta,
   ) => Promise<void>
+  /** Firebase Auth + perfil `users/{uid}`. Lança `FirebaseError` em falha. */
+  signIn: (email: string, password: string) => Promise<Account>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -63,8 +68,56 @@ async function saveUserProfileToFirestore(
   }
 }
 
+function firestoreProfileToAccount(
+  emailFromAuth: string,
+  data: Partial<FirestoreUserProfile> | undefined,
+): Account {
+  if (!data || Object.keys(data).length === 0) {
+    return {
+      balance: 0,
+      accountNumber: '0000-0',
+      userName: emailFromAuth.split('@')[0] || 'Usuário',
+      email: emailFromAuth,
+      transactions: [],
+    }
+  }
+
+  const transactions = Array.isArray(data.transactions)
+    ? data.transactions
+    : []
+
+  return {
+    balance: typeof data.balance === 'number' ? data.balance : 0,
+    accountNumber:
+      typeof data.accountNumber === 'string' ? data.accountNumber : '0000-0',
+    userName: typeof data.userName === 'string' ? data.userName : 'Usuário',
+    email:
+      typeof data.email === 'string' && data.email.length > 0
+        ? data.email
+        : emailFromAuth,
+    transactions,
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    const trimmedEmail = email.trim()
+    const cred = await signInWithEmailAndPassword(
+      auth,
+      trimmedEmail,
+      password,
+    )
+    const uid = cred.user.uid
+    const emailResolved = cred.user.email ?? trimmedEmail
+
+    const snap = await getDoc(doc(db, 'users', uid))
+    const profile = snap.exists()
+      ? (snap.data() as Partial<FirestoreUserProfile>)
+      : undefined
+    return firestoreProfileToAccount(emailResolved, profile)
+  }, [])
 
   const signUp = useCallback(
     (email: string, password: string, meta?: SignUpMeta) => {
@@ -90,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router],
   )
 
-  const value = useMemo(() => ({ signUp }), [signUp])
+  const value = useMemo(() => ({ signUp, signIn }), [signUp, signIn])
 
   return (
     <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

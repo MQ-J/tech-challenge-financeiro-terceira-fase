@@ -167,10 +167,10 @@ tech-challenge-financeiro-terceira-fase/
 ├── contexts/
 │   └── AccountContext.tsx        # Estado global (conta, login, logout)
 ├── lib/                          # Utilitários e dados
-│   ├── auth.ts                   # bcrypt (hash, compare, migrate)
+│   ├── auth.ts                   # bcrypt (legado / utilitários)
 │   ├── storage.ts                # SecureStore + fallback web
 │   ├── types.ts                  # Tipos (Account, etc.)
-│   └── mock-data.ts              # Contas e dados iniciais
+│   └── firebase-auth-messages.ts # Mensagens auth/* (Firebase)
 ├── constants/
 │   └── layout.ts                 # TABLET_BREAKPOINT, MAX_CONTENT_WIDTH, FOOTER_HEIGHT
 ├── assets/                       # Imagens e recursos

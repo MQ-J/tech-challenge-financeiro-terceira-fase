@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FirebaseError } from 'firebase/app'
+import { firebaseAuthErrorMessage } from '@/lib/firebase-auth-messages'
 import { TextInputField } from '@/components/TextInputField'
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { Checkbox } from '@/components/Checkbox'
@@ -37,25 +38,6 @@ type RegisterFormValues = z.infer<typeof registerSchema>
 
 interface RegisterFormProps {
   onSuccess: () => void
-}
-
-function firebaseAuthErrorMessage(code: string): string {
-  switch (code) {
-    case 'auth/configuration-not-found':
-      return 'Authentication não está ativo no Firebase Console (veja docs/firebase-phase-a1-console.md).'
-    case 'auth/invalid-api-key':
-      return 'API Key inválida ou de outro projeto. Confira Configurações do projeto → app Web.'
-    case 'auth/email-already-in-use':
-      return 'Este e-mail já está cadastrado.'
-    case 'auth/invalid-email':
-      return 'E-mail inválido.'
-    case 'auth/weak-password':
-      return 'Senha muito fraca. Use pelo menos 6 caracteres.'
-    case 'auth/network-request-failed':
-      return 'Falha de rede. Verifique sua conexão.'
-    default:
-      return 'Não foi possível concluir o cadastro. Tente novamente.'
-  }
 }
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
@@ -118,7 +100,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     } catch (e) {
       const message =
         e instanceof FirebaseError
-          ? firebaseAuthErrorMessage(e.code)
+          ? firebaseAuthErrorMessage(e.code, 'register')
           : 'Não foi possível concluir o cadastro. Tente novamente.'
       Toast.show({
         type: 'error',

@@ -28,10 +28,10 @@ import { TextInputField } from '@/components/TextInputField'
 import { RegisterForm } from '@/components/RegisterForm'
 import { theme } from '@/theme/colors'
 import { useAccount } from '@/contexts/AccountContext'
-import { comparePassword, migratePassword } from '@/lib/auth'
-import { getSecureItem, setSecureItem } from '@/lib/storage'
-import type { Account } from '@/lib/types'
-import { mockAccounts } from '@/lib/mock-data'
+import { useAuth } from '@/contexts/AuthContext'
+import { firebaseAuthErrorMessage } from '@/lib/firebase-auth-messages'
+import { setSecureItem } from '@/lib/storage'
+import { FirebaseError } from 'firebase/app'
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
@@ -50,6 +50,7 @@ export default function LoginScreen() {
   const [isMounted, setIsMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { logout, login } = useAccount()
+  const { signIn } = useAuth()
 
   const paddingH = tablet ? 32 : 16
   const heroDirection = tablet ? 'row' as const : 'column' as const
@@ -92,75 +93,34 @@ export default function LoginScreen() {
   }, [isLoginModalOpen, reset])
 
   const onSubmit = async (data: LoginFormValues) => {
+    const email = data.email.trim()
     try {
       setIsLoading(true)
 
-      let list: Account[]
-      try {
-        const storedList = (await getSecureItem<Account[]>('accountsList')) || mockAccounts
-        list =
-          Array.isArray(storedList) && storedList.length > 0
-            ? storedList
-            : mockAccounts
-      } catch {
-        list = mockAccounts
-      }
+      const accountFromFirebase = await signIn(email, data.password)
+      const { transactions: _t, ...meta } = accountFromFirebase
+      await setSecureItem('currentAccount', meta)
 
-      const accountRegistered = list.filter(
-        (account) => account.email === data.email,
-      )
-
-      if (accountRegistered.length > 0) {
-        const comparison = await comparePassword(
-          data.password,
-          accountRegistered[0].password,
-        )
-
-        if (comparison.matches) {
-          if (comparison.needsMigration) {
-            const hashedPassword = await migratePassword(data.password)
-            accountRegistered[0].password = hashedPassword
-
-            const updatedList = list.map((acc) =>
-              acc.accountNumber === accountRegistered[0].accountNumber
-                ? { ...acc, password: hashedPassword }
-                : acc,
-            )
-            await setSecureItem('accountsList', updatedList)
-          }
-
-          // Persistir a conta atual imediatamente ao fazer login
-          await setSecureItem('currentAccount', accountRegistered[0])
-
-          setIsLoginModalOpen(false)
-          Toast.show({
-            type: 'success',
-            text1: 'Sucesso',
-            text2: 'Login efetuado com sucesso! Você está sendo redirecionado para a home.',
-          })
-          await login(accountRegistered[0])
-          setTimeout(() => {
-            router.replace('/(tabs)' as const)
-          }, 500)
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'Erro ao fazer login',
-            text2: 'E-mail ou senha inválidos. Tente novamente.',
-          })
-        }
-      } else {
-        Toast.show({
-          type: 'error',
-          text1: 'Erro ao fazer login',
-          text2: 'E-mail ou senha inválidos. Tente novamente.',
-        })
-      }
-    } catch {
+      setIsLoginModalOpen(false)
+      Toast.show({
+        type: 'success',
+        text1: 'Sucesso',
+        text2:
+          'Login efetuado com sucesso! Você está sendo redirecionado para a home.',
+      })
+      await login(accountFromFirebase)
+      setTimeout(() => {
+        router.replace('/(tabs)' as const)
+      }, 500)
+    } catch (err) {
+      const message =
+        err instanceof FirebaseError
+          ? firebaseAuthErrorMessage(err.code, 'login')
+          : 'Não foi possível entrar. Tente novamente.'
       Toast.show({
         type: 'error',
         text1: 'Erro ao fazer login',
-        text2: 'E-mail ou senha inválidos. Tente novamente.',
+        text2: message,
       })
     } finally {
       setIsLoading(false)

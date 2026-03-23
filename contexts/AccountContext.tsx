@@ -1,6 +1,7 @@
+import { auth } from '@/firebase/config'
 import { addTransactionDoc, deleteTransactionDoc, fetchAllTransactions, updateTransactionDoc } from '@/lib/firestore'
-import { mockAccounts } from '@/lib/mock-data'
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage'
+import { signOut } from 'firebase/auth'
 import type { Account, Transaction } from '@/lib/types'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import Toast from 'react-native-toast-message'
@@ -33,8 +34,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         setAccount({ ...storedMeta, transactions: [] })
         try {
           const transactions = await fetchAllTransactions(storedMeta.accountNumber)
-          const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
-          setAccount((prev) => prev ? { ...prev, transactions, balance } : prev)
+          if (transactions.length > 0) {
+            const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
+            setAccount((prev) => (prev ? { ...prev, transactions, balance } : prev))
+          }
+          // lista vazia: mantém saldo/transações já persistidos em `currentAccount` se houver
         } catch {}
       }
       setIsHydrated(true)
@@ -54,14 +58,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
       let list: AccountMeta[] = []
       try {
-        const storedList = (await getSecureItem<AccountMeta[]>('accountsList')) || []
-        if (!Array.isArray(storedList) || storedList.length === 0) {
-          list = mockAccounts.map(({ transactions: _t, ...m }) => m)
-        } else {
-          list = storedList
-        }
+        const storedList = await getSecureItem<AccountMeta[]>('accountsList')
+        list = Array.isArray(storedList) ? storedList : []
       } catch {
-        list = mockAccounts.map(({ transactions: _t, ...m }) => m)
+        list = []
       }
 
       const exists = list.some((acc) => acc.accountNumber === account.accountNumber)
@@ -79,16 +79,38 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     setAccount({ ...accountData, transactions: [] })
     try {
       const transactions = await fetchAllTransactions(accountData.accountNumber)
-      const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
-      setAccount((prev) => prev ? { ...prev, transactions, balance } : prev)
+      if (transactions.length > 0) {
+        const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
+        setAccount((prev) => (prev ? { ...prev, transactions, balance } : prev))
+      } else {
+        // Sem docs em `accounts/{accountNumber}/transactions`: usa perfil do Firestore (`users/{uid}`)
+        setAccount((prev) =>
+          prev
+            ? {
+                ...prev,
+                transactions: accountData.transactions,
+                balance: accountData.balance,
+              }
+            : prev,
+        )
+      }
     } catch {
-      setAccount((prev) => prev ? { ...prev, transactions: accountData.transactions } : prev)
+      setAccount((prev) =>
+        prev
+          ? { ...prev, transactions: accountData.transactions, balance: accountData.balance }
+          : prev,
+      )
     }
   }
 
   const logout = async () => {
     setAccount(null)
     await removeSecureItem('currentAccount')
+    try {
+      await signOut(auth)
+    } catch {
+      /* sessão já encerrada ou sem Firebase */
+    }
   }
 
   const addTransaction = (transactionData: Omit<Transaction, 'id'>, presetId?: string) => {
