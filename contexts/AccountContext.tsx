@@ -1,14 +1,17 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import Toast from 'react-native-toast-message'
-import type { Account, Transaction } from '@/lib/types'
+import { addTransactionDoc, deleteTransactionDoc, fetchAllTransactions, updateTransactionDoc } from '@/lib/firestore'
 import { mockAccounts } from '@/lib/mock-data'
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage'
+import type { Account, Transaction } from '@/lib/types'
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import Toast from 'react-native-toast-message'
+
+type AccountMeta = Omit<Account, 'transactions'>
 
 interface AccountContextType {
   account: Account | null
   login: (accountData: Account) => Promise<void>
   logout: () => Promise<void>
-  addTransaction: (transactionData: Omit<Transaction, 'id'>) => void
+  addTransaction: (transactionData: Omit<Transaction, 'id'>, presetId?: string) => void
   updateTransaction: (
     id: string,
     updatedData: Partial<Omit<Transaction, 'id'>>,
@@ -25,9 +28,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const hydrate = async () => {
-      const storedAccount = await getSecureItem<Account>('currentAccount')
-      if (storedAccount) {
-        setAccount(storedAccount)
+      const storedMeta = await getSecureItem<AccountMeta>('currentAccount')
+      if (storedMeta) {
+        setAccount({ ...storedMeta, transactions: [] })
+        try {
+          const transactions = await fetchAllTransactions(storedMeta.accountNumber)
+          const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
+          setAccount((prev) => prev ? { ...prev, transactions, balance } : prev)
+        } catch {}
       }
       setIsHydrated(true)
     }
@@ -41,31 +49,25 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Salvar conta atual
-      await setSecureItem('currentAccount', account)
+      const { transactions: _, ...meta } = account
+      await setSecureItem('currentAccount', meta)
 
-      // Sincronizar lista de contas
-      let list: Account[] = []
+      let list: AccountMeta[] = []
       try {
-        const storedList =
-          (await getSecureItem<Account[]>('accountsList')) || []
+        const storedList = (await getSecureItem<AccountMeta[]>('accountsList')) || []
         if (!Array.isArray(storedList) || storedList.length === 0) {
-          list = mockAccounts
+          list = mockAccounts.map(({ transactions: _t, ...m }) => m)
         } else {
           list = storedList
         }
       } catch {
-        list = mockAccounts
+        list = mockAccounts.map(({ transactions: _t, ...m }) => m)
       }
 
-      const exists = list.some(
-        (acc) => acc.accountNumber === account.accountNumber,
-      )
+      const exists = list.some((acc) => acc.accountNumber === account.accountNumber)
       const updatedList = exists
-        ? list.map((acc) =>
-            acc.accountNumber === account.accountNumber ? account : acc,
-          )
-        : [...list, account]
+        ? list.map((acc) => acc.accountNumber === account.accountNumber ? meta : acc)
+        : [...list, meta]
 
       await setSecureItem('accountsList', updatedList)
     }
@@ -74,8 +76,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }, [account])
 
   const login = async (accountData: Account) => {
-    // Atualiza o estado em memória; efeito acima se encarrega de persistir
-    setAccount(accountData)
+    setAccount({ ...accountData, transactions: [] })
+    try {
+      const transactions = await fetchAllTransactions(accountData.accountNumber)
+      const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
+      setAccount((prev) => prev ? { ...prev, transactions, balance } : prev)
+    } catch {
+      setAccount((prev) => prev ? { ...prev, transactions: accountData.transactions } : prev)
+    }
   }
 
   const logout = async () => {
@@ -83,10 +91,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     await removeSecureItem('currentAccount')
   }
 
-  const addTransaction = (transactionData: Omit<Transaction, 'id'>) => {
+  const addTransaction = (transactionData: Omit<Transaction, 'id'>, presetId?: string) => {
     const newTransaction: Transaction = {
       ...transactionData,
-      id: Date.now().toString(),
+      id: presetId ?? Date.now().toString(),
     }
     if (account && newTransaction.amount < 0 && account.balance + newTransaction.amount < 0) {
       Toast.show({
@@ -104,6 +112,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         transactions: [newTransaction, ...prev.transactions],
       }
     })
+    if (account) {
+      addTransactionDoc(account.accountNumber, newTransaction).catch(() => {})
+    }
     Toast.show({
       type: 'success',
       text1: 'Transação adicionada com sucesso',
@@ -148,6 +159,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         transactions: newTransactions,
       }
     })
+    if (account) {
+      updateTransactionDoc(account.accountNumber, id, updatedData).catch(() => {})
+    }
     Toast.show({
       type: 'success',
       text1: 'Transação atualizada com sucesso',
@@ -167,6 +181,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         transactions: newTransactions,
       }
     })
+    if (account) {
+      deleteTransactionDoc(account.accountNumber, id).catch(() => {})
+    }
   }
 
   return (
