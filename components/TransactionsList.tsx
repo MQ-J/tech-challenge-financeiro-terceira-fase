@@ -280,15 +280,31 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 10,
+    backgroundColor: '#1a1e23',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 8,
   },
-  searchIcon: {},
+  searchIcon: {
+    marginRight: 2,
+  },
   searchInput: {
     flex: 1,
+    fontSize: 14,
+    color: '#eee',
   },
   chipsScroll: {
     flexGrow: 0,
+    marginBottom: 4,
   },
   chipsContent: {
+    paddingHorizontal: 16,
     gap: 8,
     paddingVertical: 8,
   },
@@ -307,14 +323,18 @@ const styles = StyleSheet.create({
   chipText: {
     color: '#ccc',
     fontSize: 13,
+    fontWeight: '500',
   },
   chipTextSelected: {
     color: '#25292e',
+    fontWeight: '600',
   },
   dateToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   dateToggleText: {
     fontSize: 13,
@@ -323,6 +343,8 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
   dateField: {
     flex: 1,
@@ -334,6 +356,10 @@ const styles = StyleSheet.create({
   },
   dateInput: {
     flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#eee',
   },
   dateInputWrapper: {
     flexDirection: 'row',
@@ -341,12 +367,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#444',
     borderRadius: 8,
+    backgroundColor: '#1a1e23',
+    paddingRight: 6,
   },
-  dateClear: {},
+  dateClear: {
+    padding: 4,
+  },
   resultRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    paddingTop: 4,
   },
   resultCount: {
     fontSize: 12,

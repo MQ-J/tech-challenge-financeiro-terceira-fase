@@ -1,12 +1,13 @@
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { useAccount } from '@/contexts/AccountContext'
 import { formatCurrencyInput, parseCurrency } from '@/lib/format'
+import { uploadReceipt } from '@/lib/receipt-storage'
 import {
-  TRANSACTION_TYPES,
-  type TransactionFormValues,
-  formDateToIso,
-  isoToFormDate,
-  transactionSchema,
+    TRANSACTION_TYPES,
+    type TransactionFormValues,
+    formDateToIso,
+    isoToFormDate,
+    transactionSchema,
 } from '@/lib/transaction-schema'
 import type { Transaction } from '@/lib/types'
 import { theme } from '@/theme/colors'
@@ -16,15 +17,16 @@ import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native'
 
 interface TransactionFormProps {
@@ -34,8 +36,9 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ transaction, onSuccess }: TransactionFormProps) {
-  const { addTransaction, updateTransaction } = useAccount()
+  const { account, addTransaction, updateTransaction } = useAccount()
   const [typeModalVisible, setTypeModalVisible] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const isEditMode = Boolean(transaction)
 
   const {
@@ -114,6 +117,21 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
     const numAmount = parseCurrency(values.amount)
     const finalAmount = values.type === 'deposito' ? numAmount : -Math.abs(numAmount)
 
+    const presetId = isEditMode && transaction ? transaction.id : Date.now().toString()
+    let receiptUrl = ''
+    if (values.receiptUri && !values.receiptUri.startsWith('https://')) {
+      try {
+        setUploading(true)
+        receiptUrl = await uploadReceipt(values.receiptUri, account!.accountNumber, presetId)
+      } catch {
+        receiptUrl = values.receiptUri
+      } finally {
+        setUploading(false)
+      }
+    } else if (values.receiptUri) {
+      receiptUrl = values.receiptUri
+    }
+
     const transactionData = {
       type: values.type,
       amount: finalAmount,
@@ -122,13 +140,13 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
         (values.description?.trim() ||
           TRANSACTION_TYPES.find((t) => t.value === values.type)?.label) ??
         values.type,
-      ...(values.receiptUri ? { receiptUrl: values.receiptUri } : {}),
+      ...(receiptUrl ? { receiptUrl } : {}),
     }
 
     if (isEditMode && transaction) {
       updateTransaction(transaction.id, transactionData)
     } else {
-      addTransaction(transactionData)
+      addTransaction(transactionData, presetId)
     }
 
     onSuccess?.()
@@ -266,7 +284,6 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
       />
       {errors.date && <Text style={styles.errorText}>{errors.date.message}</Text>}
 
-      {/* Receipt — local URI preview only (no upload) */}
       <Text style={styles.fieldLabel}>Recibo (opcional)</Text>
       <View style={styles.receiptRow}>
         <Pressable style={styles.receiptButton} onPress={handlePickReceipt}>
@@ -289,10 +306,17 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
         <Image source={{ uri: receiptUri }} style={styles.receiptPreview} resizeMode="cover" />
       ) : null}
 
+      {uploading && (
+        <View style={styles.uploadingRow}>
+          <ActivityIndicator size="small" color="#666" />
+          <Text style={styles.uploadingText}>Enviando recibo...</Text>
+        </View>
+      )}
+
       <PrimaryButton
         label={isEditMode ? 'Salvar alterações' : 'Concluir transação'}
         onPress={handleSubmit(onSubmit)}
-        disabled={isSubmitting}
+        disabled={isSubmitting || uploading}
         style={styles.submitButton}
       />
     </ScrollView>
