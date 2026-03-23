@@ -10,6 +10,8 @@ export interface Transaction {
 }
 
 export interface Account {
+  /** Firebase Auth UID — preenchido após login; usado para `users/{uid}` no Firestore. */
+  uid?: string
   balance: number
   accountNumber: string
   userName: string

@@ -1,12 +1,17 @@
 import { auth } from '@/firebase/config'
-import { addTransactionDoc, deleteTransactionDoc, fetchAllTransactions, updateTransactionDoc } from '@/lib/firestore'
-import { getSecureItem, removeSecureItem, setSecureItem } from '@/lib/storage'
-import { signOut } from 'firebase/auth'
+import {
+  addTransactionDoc,
+  deleteTransactionDoc,
+  fetchAllTransactions,
+  updateTransactionDoc,
+  updateUserProfileFinancials,
+} from '@/lib/firestore'
+import { fetchUserAccountDocument } from '@/lib/user-account-from-firestore'
+import { removeSecureItem, setSecureItem } from '@/lib/storage'
 import type { Account, Transaction } from '@/lib/types'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import Toast from 'react-native-toast-message'
-
-type AccountMeta = Omit<Account, 'transactions'>
 
 interface AccountContextType {
   account: Account | null
@@ -23,81 +28,101 @@ interface AccountContextType {
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined)
 
+async function mergeWithSubcollectionTransactions(
+  accountData: Account,
+): Promise<Account> {
+  try {
+    const transactions = await fetchAllTransactions(accountData.accountNumber)
+    if (transactions.length > 0) {
+      const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
+      return { ...accountData, transactions, balance }
+    }
+    return {
+      ...accountData,
+      transactions: accountData.transactions ?? [],
+      balance: accountData.balance,
+    }
+  } catch {
+    return {
+      ...accountData,
+      transactions: accountData.transactions ?? [],
+      balance: accountData.balance,
+    }
+  }
+}
+
 export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
-    const hydrate = async () => {
-      const storedMeta = await getSecureItem<AccountMeta>('currentAccount')
-      if (storedMeta) {
-        setAccount({ ...storedMeta, transactions: [] })
-        try {
-          const transactions = await fetchAllTransactions(storedMeta.accountNumber)
-          if (transactions.length > 0) {
-            const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
-            setAccount((prev) => (prev ? { ...prev, transactions, balance } : prev))
-          }
-          // lista vazia: mantém saldo/transações já persistidos em `currentAccount` se houver
-        } catch {}
-      }
-      setIsHydrated(true)
-    }
-    void hydrate()
+    void removeSecureItem('accountsList')
   }, [])
 
-  // Sempre que a conta mudar, persistir currentAccount e sincronizar accountsList
+  useEffect(() => {
+    let cancelled = false
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (cancelled) return
+
+      if (!user) {
+        setAccount(null)
+        await removeSecureItem('currentAccount')
+        setIsHydrated(true)
+        return
+      }
+
+      try {
+        const base = await fetchUserAccountDocument(
+          user.uid,
+          user.email ?? '',
+        )
+        const merged = await mergeWithSubcollectionTransactions(base)
+        if (cancelled) return
+        setAccount(merged)
+        const { transactions: _, ...meta } = merged
+        await setSecureItem('currentAccount', meta)
+      } catch {
+        if (!cancelled) setAccount(null)
+      } finally {
+        if (!cancelled) setIsHydrated(true)
+      }
+    })
+
+    return () => {
+      cancelled = true
+      unsub()
+    }
+  }, [])
+
+  // Espelha conta logada no storage (sem lista de transações) — só controle de sessão local.
   useEffect(() => {
     const persist = async () => {
       if (account === null) {
         return
       }
-
       const { transactions: _, ...meta } = account
       await setSecureItem('currentAccount', meta)
-
-      let list: AccountMeta[] = []
-      try {
-        const storedList = await getSecureItem<AccountMeta[]>('accountsList')
-        list = Array.isArray(storedList) ? storedList : []
-      } catch {
-        list = []
-      }
-
-      const exists = list.some((acc) => acc.accountNumber === account.accountNumber)
-      const updatedList = exists
-        ? list.map((acc) => acc.accountNumber === account.accountNumber ? meta : acc)
-        : [...list, meta]
-
-      await setSecureItem('accountsList', updatedList)
     }
-
     void persist()
   }, [account])
 
   const login = async (accountData: Account) => {
-    setAccount({ ...accountData, transactions: [] })
+    const uid = accountData.uid ?? auth.currentUser?.uid
+    const withUid = uid ? { ...accountData, uid } : accountData
+    setAccount({ ...withUid, transactions: [] })
     try {
-      const transactions = await fetchAllTransactions(accountData.accountNumber)
-      if (transactions.length > 0) {
-        const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
-        setAccount((prev) => (prev ? { ...prev, transactions, balance } : prev))
-      } else {
-        // Sem docs em `accounts/{accountNumber}/transactions`: usa perfil do Firestore (`users/{uid}`)
-        setAccount((prev) =>
-          prev
-            ? {
-                ...prev,
-                transactions: accountData.transactions,
-                balance: accountData.balance,
-              }
-            : prev,
-        )
-      }
+      const merged = await mergeWithSubcollectionTransactions(withUid)
+      setAccount(merged)
+      const { transactions: _, ...meta } = merged
+      await setSecureItem('currentAccount', meta)
     } catch {
       setAccount((prev) =>
         prev
-          ? { ...prev, transactions: accountData.transactions, balance: accountData.balance }
+          ? {
+              ...prev,
+              transactions: withUid.transactions,
+              balance: withUid.balance,
+            }
           : prev,
       )
     }
@@ -109,16 +134,48 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     try {
       await signOut(auth)
     } catch {
-      /* sessão já encerrada ou sem Firebase */
+      /* sessão já encerrada */
     }
   }
 
-  const addTransaction = (transactionData: Omit<Transaction, 'id'>, presetId?: string) => {
+  const syncFirebaseAfterMutation = async (
+    next: Account,
+    subcollectionOp: () => Promise<void>,
+  ) => {
+    const uid = next.uid ?? auth.currentUser?.uid
+    try {
+      await subcollectionOp()
+      if (uid) {
+        await updateUserProfileFinancials(
+          uid,
+          next.balance,
+          next.transactions,
+        )
+      }
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'Erro ao sincronizar',
+        text2: 'Não foi possível salvar no Firebase. Verifique conexão e regras.',
+      })
+    }
+  }
+
+  const addTransaction = (
+    transactionData: Omit<Transaction, 'id'>,
+    presetId?: string,
+  ) => {
+    if (!account) return
+
     const newTransaction: Transaction = {
       ...transactionData,
       id: presetId ?? Date.now().toString(),
     }
-    if (account && newTransaction.amount < 0 && account.balance + newTransaction.amount < 0) {
+
+    if (
+      newTransaction.amount < 0 &&
+      account.balance + newTransaction.amount < 0
+    ) {
       Toast.show({
         type: 'error',
         text1: 'Saldo insuficiente',
@@ -126,17 +183,17 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       })
       return
     }
-    setAccount((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        balance: prev.balance + newTransaction.amount,
-        transactions: [newTransaction, ...prev.transactions],
-      }
-    })
-    if (account) {
-      addTransactionDoc(account.accountNumber, newTransaction).catch(() => {})
+
+    const next: Account = {
+      ...account,
+      balance: account.balance + newTransaction.amount,
+      transactions: [newTransaction, ...account.transactions],
     }
+
+    setAccount(next)
+    void syncFirebaseAfterMutation(next, () =>
+      addTransactionDoc(account.accountNumber, newTransaction),
+    )
     Toast.show({
       type: 'success',
       text1: 'Transação adicionada com sucesso',
@@ -147,14 +204,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     id: string,
     updatedData: Partial<Omit<Transaction, 'id'>>,
   ) => {
-    const currentAccount = account
-    if (!currentAccount) return
-    const transactionToUpdate = currentAccount.transactions.find((t) => t.id === id)
+    if (!account) return
+
+    const transactionToUpdate = account.transactions.find((t) => t.id === id)
     if (!transactionToUpdate) return
+
     const oldAmount = transactionToUpdate.amount
     const newAmount = updatedData.amount ?? oldAmount
     const balanceDifference = newAmount - oldAmount
-    const potentialNewBalance = currentAccount.balance + balanceDifference
+    const potentialNewBalance = account.balance + balanceDifference
+
     if (potentialNewBalance < 0) {
       Toast.show({
         type: 'error',
@@ -163,27 +222,28 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       })
       return
     }
-    setAccount((prev) => {
-      if (!prev) return prev
-      let balanceDiff = 0
-      const newTransactions = prev.transactions.map((t) => {
-        if (t.id === id) {
-          const prevAmount = t.amount
-          const nextAmount = updatedData.amount ?? prevAmount
-          balanceDiff = nextAmount - prevAmount
-          return { ...t, ...updatedData, id }
-        }
-        return t
-      })
-      return {
-        ...prev,
-        balance: prev.balance + balanceDiff,
-        transactions: newTransactions,
+
+    let balanceDiff = 0
+    const newTransactions = account.transactions.map((t) => {
+      if (t.id === id) {
+        const prevAmount = t.amount
+        const nextAmount = updatedData.amount ?? prevAmount
+        balanceDiff = nextAmount - prevAmount
+        return { ...t, ...updatedData, id }
       }
+      return t
     })
-    if (account) {
-      updateTransactionDoc(account.accountNumber, id, updatedData).catch(() => {})
+
+    const next: Account = {
+      ...account,
+      balance: account.balance + balanceDiff,
+      transactions: newTransactions,
     }
+
+    setAccount(next)
+    void syncFirebaseAfterMutation(next, () =>
+      updateTransactionDoc(account.accountNumber, id, updatedData),
+    )
     Toast.show({
       type: 'success',
       text1: 'Transação atualizada com sucesso',
@@ -191,21 +251,21 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }
 
   const deleteTransaction = (id: string) => {
-    setAccount((prev) => {
-      if (!prev) return prev
-      const transactionToDelete = prev.transactions.find((t) => t.id === id)
-      if (!transactionToDelete) return prev
-      const newTransactions = prev.transactions.filter((t) => t.id !== id)
-      const newBalance = prev.balance - transactionToDelete.amount
-      return {
-        ...prev,
-        balance: newBalance,
-        transactions: newTransactions,
-      }
-    })
-    if (account) {
-      deleteTransactionDoc(account.accountNumber, id).catch(() => {})
+    if (!account) return
+
+    const transactionToDelete = account.transactions.find((t) => t.id === id)
+    if (!transactionToDelete) return
+
+    const next: Account = {
+      ...account,
+      balance: account.balance - transactionToDelete.amount,
+      transactions: account.transactions.filter((t) => t.id !== id),
     }
+
+    setAccount(next)
+    void syncFirebaseAfterMutation(next, () =>
+      deleteTransactionDoc(account.accountNumber, id),
+    )
   }
 
   return (
@@ -232,4 +292,3 @@ export function useAccount() {
   }
   return context
 }
-

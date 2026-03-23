@@ -16,6 +16,31 @@ import {
     type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
+function transactionForUserDoc(t: Transaction): Record<string, unknown> {
+  const o: Record<string, unknown> = {
+    id: t.id,
+    type: t.type,
+    amount: t.amount,
+    date: t.date,
+  }
+  if (t.description !== undefined) o.description = t.description
+  if (t.receiptUrl !== undefined) o.receiptUrl = t.receiptUrl
+  return o
+}
+
+/** Atualiza saldo e espelho de transações em `users/{uid}` (além da subcoleção `accounts/.../transactions`). */
+export async function updateUserProfileFinancials(
+  uid: string,
+  balance: number,
+  transactions: Transaction[],
+): Promise<void> {
+  const ref = doc(db, 'users', uid)
+  await updateDoc(ref, {
+    balance,
+    transactions: transactions.map(transactionForUserDoc),
+  })
+}
+
 const PAGE_SIZE = 20
 
 export interface TransactionFilters {

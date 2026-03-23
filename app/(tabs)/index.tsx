@@ -10,9 +10,6 @@ import { RecentTransactions } from '@/components/RecentTransactions'
 import { useRouter } from 'expo-router'
 import { MAX_CONTENT_WIDTH, isTabletLayout } from '@/constants/layout'
 import { ChartsNative } from '@/components/charts/ChartsNative'
-import { getSecureItem } from '@/lib/storage'
-import type { Account } from '@/lib/types'
-
 function getGreeting(): string {
   const date = new Date()
   const dayOfWeek = date.toLocaleDateString('pt-BR', { weekday: 'long' })
@@ -26,7 +23,7 @@ function getGreeting(): string {
 }
 
 export default function HomeScreen() {
-  const { account, logout, isHydrated, login } = useAccount()
+  const { account, logout, isHydrated } = useAccount()
   const router = useRouter()
   const { width } = useWindowDimensions()
   const contentWidth = Math.min(width - 32, MAX_CONTENT_WIDTH)
@@ -43,17 +40,6 @@ export default function HomeScreen() {
   const chartsOpacity = useRef(new Animated.Value(0)).current
   const chartsTranslateY = useRef(new Animated.Value(16)).current
   const homeEnterAnimation = useRef<Animated.CompositeAnimation | null>(null)
-
-  useEffect(() => {
-    if (!isHydrated || account) return
-    const rehydrate = async () => {
-      const storedAccount = await getSecureItem<Account>('currentAccount')
-      if (storedAccount) {
-        await login(storedAccount)
-      }
-    }
-    void rehydrate()
-  }, [account, isHydrated, login])
 
   useEffect(() => {
     if (!isHydrated || !account || !isFocused) {

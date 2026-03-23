@@ -30,7 +30,6 @@ import { theme } from '@/theme/colors'
 import { useAccount } from '@/contexts/AccountContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { firebaseAuthErrorMessage } from '@/lib/firebase-auth-messages'
-import { setSecureItem } from '@/lib/storage'
 import { FirebaseError } from 'firebase/app'
 
 const loginSchema = z.object({
@@ -98,8 +97,6 @@ export default function LoginScreen() {
       setIsLoading(true)
 
       const accountFromFirebase = await signIn(email, data.password)
-      const { transactions: _t, ...meta } = accountFromFirebase
-      await setSecureItem('currentAccount', meta)
 
       setIsLoginModalOpen(false)
       Toast.show({

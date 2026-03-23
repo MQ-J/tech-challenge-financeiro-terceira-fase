@@ -1,11 +1,12 @@
 import { auth } from '@/firebase/config'
 import { db } from '@/lib/firebase'
 import type { Account, FirestoreUserProfile } from '@/lib/types'
+import { fetchUserAccountDocument } from '@/lib/user-account-from-firestore'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, setDoc } from 'firebase/firestore'
 import { useRouter } from 'expo-router'
 import React, { createContext, useCallback, useContext, useMemo } from 'react'
 
@@ -68,37 +69,6 @@ async function saveUserProfileToFirestore(
   }
 }
 
-function firestoreProfileToAccount(
-  emailFromAuth: string,
-  data: Partial<FirestoreUserProfile> | undefined,
-): Account {
-  if (!data || Object.keys(data).length === 0) {
-    return {
-      balance: 0,
-      accountNumber: '0000-0',
-      userName: emailFromAuth.split('@')[0] || 'Usuário',
-      email: emailFromAuth,
-      transactions: [],
-    }
-  }
-
-  const transactions = Array.isArray(data.transactions)
-    ? data.transactions
-    : []
-
-  return {
-    balance: typeof data.balance === 'number' ? data.balance : 0,
-    accountNumber:
-      typeof data.accountNumber === 'string' ? data.accountNumber : '0000-0',
-    userName: typeof data.userName === 'string' ? data.userName : 'Usuário',
-    email:
-      typeof data.email === 'string' && data.email.length > 0
-        ? data.email
-        : emailFromAuth,
-    transactions,
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
@@ -109,14 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       trimmedEmail,
       password,
     )
-    const uid = cred.user.uid
     const emailResolved = cred.user.email ?? trimmedEmail
-
-    const snap = await getDoc(doc(db, 'users', uid))
-    const profile = snap.exists()
-      ? (snap.data() as Partial<FirestoreUserProfile>)
-      : undefined
-    return firestoreProfileToAccount(emailResolved, profile)
+    return fetchUserAccountDocument(cred.user.uid, emailResolved)
   }, [])
 
   const signUp = useCallback(
