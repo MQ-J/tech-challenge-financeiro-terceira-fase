@@ -1,11 +1,13 @@
 import { useAccount } from '@/contexts/AccountContext'
 import { formatCurrency } from '@/lib/format'
 import type { Transaction, TransactionType } from '@/lib/types'
+import { theme } from '@/theme/colors'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
   FlatList,
+  Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -41,6 +43,17 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
   const [dateTo, setDateTo] = useState('')
   const [search, setSearch] = useState('')
   const [showDateFilters, setShowDateFilters] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false)
+  const deleteModalClearWebTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (deleteModalClearWebTimerRef.current) {
+        clearTimeout(deleteModalClearWebTimerRef.current)
+      }
+    }
+  }, [])
 
   const hasActiveFilters = selectedType !== 'todos' || dateFrom !== '' || dateTo !== '' || search !== ''
 
@@ -85,19 +98,41 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
     return [...localFiltered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
   }, [localFiltered])
 
-  const handleDelete = (transaction: Transaction) => {
-    Alert.alert(
-      'Excluir transação',
-      'Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => deleteTransaction(transaction.id),
-        },
-      ],
-    )
+  /** Só esconde o modal; mantém `deleteTarget` até o fim da animação (evita sumir o resumo antes do overlay). */
+  const closeDeleteModal = () => {
+    setDeleteModalVisible(false)
+    // react-native-web nem sempre chama onDismiss; limpa o alvo após o fade (~300ms).
+    if (Platform.OS === 'web') {
+      if (deleteModalClearWebTimerRef.current) {
+        clearTimeout(deleteModalClearWebTimerRef.current)
+      }
+      deleteModalClearWebTimerRef.current = setTimeout(() => {
+        deleteModalClearWebTimerRef.current = null
+        setDeleteTarget(null)
+      }, 320)
+    }
+  }
+
+  const clearDeleteTargetAfterDismiss = () => {
+    if (Platform.OS !== 'web') {
+      setDeleteTarget(null)
+    }
+  }
+
+  const handleDeletePress = (transaction: Transaction) => {
+    if (Platform.OS === 'web' && deleteModalClearWebTimerRef.current) {
+      clearTimeout(deleteModalClearWebTimerRef.current)
+      deleteModalClearWebTimerRef.current = null
+    }
+    setDeleteTarget(transaction)
+    setDeleteModalVisible(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (deleteTarget) {
+      deleteTransaction(deleteTarget.id)
+    }
+    closeDeleteModal()
   }
 
   const formatDateInput = (text: string) => {
@@ -139,7 +174,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
           </Pressable>
           <Pressable
             style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => handleDelete(item)}
+            onPress={() => handleDeletePress(item)}
           >
             <Ionicons name="trash-outline" size={14} color="#dc2626" />
           </Pressable>
@@ -150,6 +185,65 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
 
   return (
     <View style={styles.container}>
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDeleteModal}
+        onDismiss={clearDeleteTargetAfterDismiss}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalCard}>
+            <Text style={styles.deleteModalTitle}>Excluir transação</Text>
+            <Text style={styles.deleteModalMessage}>
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser
+              desfeita.
+            </Text>
+            {deleteTarget ? (
+              <View style={styles.deleteModalSummary}>
+                <Text style={styles.deleteModalSummaryLabel}>
+                  {TYPE_LABELS[deleteTarget.type]}
+                  {deleteTarget.description
+                    ? ` · ${deleteTarget.description}`
+                    : ''}
+                </Text>
+                <Text
+                  style={[
+                    styles.deleteModalSummaryAmount,
+                    deleteTarget.amount >= 0
+                      ? styles.deleteModalAmountPositive
+                      : styles.deleteModalAmountNegative,
+                  ]}
+                >
+                  {deleteTarget.amount >= 0 ? '+' : ''}
+                  {formatCurrency(deleteTarget.amount)}
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.deleteModalActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.deleteCancelButton,
+                  pressed && styles.deleteCancelButtonPressed,
+                ]}
+                onPress={closeDeleteModal}
+              >
+                <Text style={styles.deleteCancelButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.deleteConfirmButton,
+                  pressed && styles.deleteConfirmButtonPressed,
+                ]}
+                onPress={handleConfirmDelete}
+              >
+                <Text style={styles.deleteConfirmButtonText}>Excluir</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.searchRow}>
         <Ionicons name="search-outline" size={16} color="#666" style={styles.searchIcon} />
         <TextInput
@@ -258,6 +352,9 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
       </View>
 
       <FlatList
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
         data={displayedTransactions}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
@@ -276,6 +373,13 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
   },
   searchRow: {
     flexDirection: 'row',
@@ -480,6 +584,97 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginVertical: 16,
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  deleteModalCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#111',
+  },
+  deleteModalMessage: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  deleteModalSummary: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    gap: 4,
+  },
+  deleteModalSummaryLabel: {
+    fontSize: 13,
+    color: '#374151',
+  },
+  deleteModalSummaryAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  deleteModalAmountPositive: {
+    color: '#16a34a',
+  },
+  deleteModalAmountNegative: {
+    color: '#dc2626',
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  deleteCancelButton: {
+    minWidth: 120,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteCancelButtonPressed: {
+    opacity: 0.85,
+  },
+  deleteCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.primary,
+  },
+  deleteConfirmButton: {
+    minWidth: 120,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#dc2626',
+  },
+  deleteConfirmButtonPressed: {
+    opacity: 0.85,
+  },
+  deleteConfirmButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 })
 
