@@ -5,7 +5,9 @@ import {
   fetchAllTransactions,
   updateTransactionDoc,
   updateUserProfileFinancials,
+  type TransactionDocUpdate,
 } from '@/lib/firestore'
+import { deleteReceiptFromFirebaseIfPresent } from '@/lib/receipt-storage'
 import { fetchUserAccountDocument } from '@/lib/user-account-from-firestore'
 import { removeSecureItem, setSecureItem } from '@/lib/storage'
 import type { Account, Transaction } from '@/lib/types'
@@ -18,10 +20,7 @@ interface AccountContextType {
   login: (accountData: Account) => Promise<void>
   logout: () => Promise<void>
   addTransaction: (transactionData: Omit<Transaction, 'id'>, presetId?: string) => void
-  updateTransaction: (
-    id: string,
-    updatedData: Partial<Omit<Transaction, 'id'>>,
-  ) => void
+  updateTransaction: (id: string, updatedData: TransactionDocUpdate) => void
   deleteTransaction: (id: string) => void
   isHydrated: boolean
 }
@@ -141,6 +140,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const syncFirebaseAfterMutation = async (
     next: Account,
     subcollectionOp: () => Promise<void>,
+    afterSuccess?: () => Promise<void>,
   ) => {
     const uid = next.uid ?? auth.currentUser?.uid
     try {
@@ -152,6 +152,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
           next.transactions,
         )
       }
+      await afterSuccess?.()
     } catch {
       Toast.show({
         type: 'error',
@@ -200,14 +201,28 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
-  const updateTransaction = (
-    id: string,
-    updatedData: Partial<Omit<Transaction, 'id'>>,
-  ) => {
+  const updateTransaction = (id: string, updatedData: TransactionDocUpdate) => {
     if (!account) return
 
     const transactionToUpdate = account.transactions.find((t) => t.id === id)
     if (!transactionToUpdate) return
+
+    const prevReceiptUrl = transactionToUpdate.receiptUrl
+    const oldFirebaseReceipt =
+      prevReceiptUrl?.includes('firebasestorage.googleapis.com') === true
+        ? prevReceiptUrl
+        : null
+    let deleteOldReceiptAfterSync = false
+    if (oldFirebaseReceipt) {
+      if (updatedData.receiptUrl === null) {
+        deleteOldReceiptAfterSync = true
+      } else if (
+        typeof updatedData.receiptUrl === 'string' &&
+        updatedData.receiptUrl !== oldFirebaseReceipt
+      ) {
+        deleteOldReceiptAfterSync = true
+      }
+    }
 
     const oldAmount = transactionToUpdate.amount
     const newAmount = updatedData.amount ?? oldAmount
@@ -225,13 +240,23 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
     let balanceDiff = 0
     const newTransactions = account.transactions.map((t) => {
-      if (t.id === id) {
-        const prevAmount = t.amount
-        const nextAmount = updatedData.amount ?? prevAmount
-        balanceDiff = nextAmount - prevAmount
-        return { ...t, ...updatedData, id }
+      if (t.id !== id) return t
+
+      const prevAmount = t.amount
+      const nextAmount = updatedData.amount ?? prevAmount
+      balanceDiff = nextAmount - prevAmount
+
+      const { receiptUrl: patchReceipt, ...patchRest } = updatedData
+      const mergedBase: Transaction = { ...t, ...patchRest, id }
+
+      if (patchReceipt === null) {
+        const { receiptUrl: _removed, ...rest } = mergedBase
+        return rest
       }
-      return t
+      if (typeof patchReceipt === 'string') {
+        return { ...mergedBase, receiptUrl: patchReceipt }
+      }
+      return mergedBase
     })
 
     const next: Account = {
@@ -241,8 +266,12 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
 
     setAccount(next)
-    void syncFirebaseAfterMutation(next, () =>
-      updateTransactionDoc(account.accountNumber, id, updatedData),
+    void syncFirebaseAfterMutation(
+      next,
+      () => updateTransactionDoc(account.accountNumber, id, updatedData),
+      deleteOldReceiptAfterSync
+        ? () => deleteReceiptFromFirebaseIfPresent(oldFirebaseReceipt)
+        : undefined,
     )
     Toast.show({
       type: 'success',
@@ -256,6 +285,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const transactionToDelete = account.transactions.find((t) => t.id === id)
     if (!transactionToDelete) return
 
+    const receiptUrlToDelete = transactionToDelete.receiptUrl
+
     const next: Account = {
       ...account,
       balance: account.balance - transactionToDelete.amount,
@@ -263,8 +294,12 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
 
     setAccount(next)
-    void syncFirebaseAfterMutation(next, () =>
-      deleteTransactionDoc(account.accountNumber, id),
+    void syncFirebaseAfterMutation(
+      next,
+      () => deleteTransactionDoc(account.accountNumber, id),
+      receiptUrlToDelete
+        ? () => deleteReceiptFromFirebaseIfPresent(receiptUrlToDelete)
+        : undefined,
     )
   }
 

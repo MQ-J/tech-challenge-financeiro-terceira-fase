@@ -1,33 +1,37 @@
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { useAccount } from '@/contexts/AccountContext'
+import { auth } from '@/firebase/config'
 import { formatCurrencyInput, parseCurrency } from '@/lib/format'
 import { uploadReceipt } from '@/lib/receipt-storage'
+import type { TransactionDocUpdate } from '@/lib/firestore'
 import {
-    TRANSACTION_TYPES,
-    type TransactionFormValues,
-    formDateToIso,
-    isoToFormDate,
-    transactionSchema,
+  TRANSACTION_TYPES,
+  type TransactionFormValues,
+  formDateToIso,
+  isoToFormDate,
+  transactionSchema,
 } from '@/lib/transaction-schema'
 import type { Transaction } from '@/lib/types'
 import { theme } from '@/theme/colors'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as ImagePicker from 'expo-image-picker'
+import * as DocumentPicker from 'expo-document-picker'
 import { useCallback, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native'
+import Toast from 'react-native-toast-message'
 
 interface TransactionFormProps {
   /** When provided the form operates in edit mode */
@@ -39,6 +43,9 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
   const { account, addTransaction, updateTransaction } = useAccount()
   const [typeModalVisible, setTypeModalVisible] = useState(false)
   const [uploading, setUploading] = useState(false)
+  /** Pré-visualização: imagem ou PDF (galeria/câmera = imagem). */
+  const [receiptAttachKind, setReceiptAttachKind] = useState<'image' | 'pdf'>('image')
+  const [receiptPickedLabel, setReceiptPickedLabel] = useState<string | null>(null)
   const isEditMode = Boolean(transaction)
 
   const {
@@ -65,14 +72,22 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
 
   useEffect(() => {
     if (transaction) {
+      const url = transaction.receiptUrl ?? ''
+      const isPdf =
+        /\.pdf(\?|#|$)/i.test(url) ||
+        url.toLowerCase().includes('application%2Fpdf')
+      setReceiptAttachKind(isPdf ? 'pdf' : 'image')
+      setReceiptPickedLabel(isPdf ? 'Recibo em PDF' : null)
       reset({
         type: transaction.type,
         amount: Math.abs(transaction.amount).toFixed(2).replace('.', ','),
         description: transaction.description ?? '',
         date: isoToFormDate(transaction.date),
-        receiptUri: transaction.receiptUrl ?? '',
+        receiptUri: url,
       })
     } else {
+      setReceiptAttachKind('image')
+      setReceiptPickedLabel(null)
       reset({
         type: 'deposito',
         amount: '',
@@ -96,6 +111,8 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
       quality: 0.8,
     })
     if (!result.canceled && result.assets.length > 0) {
+      setReceiptAttachKind('image')
+      setReceiptPickedLabel(null)
       setValue('receiptUri', result.assets[0].uri, { shouldValidate: true })
     }
   }, [setValue])
@@ -108,8 +125,25 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 })
     if (!result.canceled && result.assets.length > 0) {
+      setReceiptAttachKind('image')
+      setReceiptPickedLabel(null)
       setValue('receiptUri', result.assets[0].uri, { shouldValidate: true })
     }
+  }, [setValue])
+
+  const handlePickDocument = useCallback(async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['image/*', 'application/pdf'],
+      copyToCacheDirectory: true,
+    })
+    if (result.canceled || !result.assets?.length) return
+    const file = result.assets[0]
+    const isPdf =
+      file.mimeType === 'application/pdf' ||
+      file.name?.toLowerCase().endsWith('.pdf')
+    setReceiptAttachKind(isPdf ? 'pdf' : 'image')
+    setReceiptPickedLabel(file.name ?? (isPdf ? 'Documento PDF' : 'Imagem'))
+    setValue('receiptUri', file.uri, { shouldValidate: true })
   }, [setValue])
 
   const onSubmit = async (values: TransactionFormValues) => {
@@ -117,22 +151,57 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
     const numAmount = parseCurrency(values.amount)
     const finalAmount = values.type === 'deposito' ? numAmount : -Math.abs(numAmount)
 
+    if (!account) {
+      Toast.show({
+        type: 'error',
+        text1: 'Sessão indisponível',
+        text2: 'Faça login novamente para salvar a transação.',
+      })
+      return
+    }
+
+    const uid = account.uid ?? auth.currentUser?.uid
+    if (!uid) {
+      Toast.show({
+        type: 'error',
+        text1: 'Sessão inválida',
+        text2: 'Não foi possível identificar o usuário para enviar o arquivo.',
+      })
+      return
+    }
+
     const presetId = isEditMode && transaction ? transaction.id : Date.now().toString()
-    let receiptUrl = ''
+    let nextReceiptUrl: string | null | undefined = undefined
+
     if (values.receiptUri && !values.receiptUri.startsWith('https://')) {
       try {
         setUploading(true)
-        receiptUrl = await uploadReceipt(values.receiptUri, account!.accountNumber, presetId)
-      } catch {
-        receiptUrl = values.receiptUri
+        nextReceiptUrl = await uploadReceipt(values.receiptUri, {
+          uid,
+          accountNumber: account.accountNumber,
+          transactionId: presetId,
+          fileNameHint: receiptPickedLabel,
+        })
+      } catch (e) {
+        const message =
+          e instanceof Error ? e.message : 'Verifique conexão, login e regras do Storage.'
+        Toast.show({
+          type: 'error',
+          text1: 'Falha no upload do recibo',
+          text2: message,
+        })
+        return
       } finally {
         setUploading(false)
       }
     } else if (values.receiptUri) {
-      receiptUrl = values.receiptUri
+      nextReceiptUrl = values.receiptUri
+    } else if (isEditMode && transaction?.receiptUrl) {
+      /** Usuário removeu o recibo no formulário — limpa Firestore e Storage após salvar. */
+      nextReceiptUrl = null
     }
 
-    const transactionData = {
+    const basePayload = {
       type: values.type,
       amount: finalAmount,
       date: isoDate,
@@ -140,13 +209,20 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
         (values.description?.trim() ||
           TRANSACTION_TYPES.find((t) => t.value === values.type)?.label) ??
         values.type,
-      ...(receiptUrl ? { receiptUrl } : {}),
     }
 
     if (isEditMode && transaction) {
-      updateTransaction(transaction.id, transactionData)
+      const patch: TransactionDocUpdate = {
+        ...basePayload,
+        ...(nextReceiptUrl !== undefined ? { receiptUrl: nextReceiptUrl } : {}),
+      }
+      updateTransaction(transaction.id, patch)
     } else {
-      addTransaction(transactionData, presetId)
+      const newTransaction: Omit<Transaction, 'id'> = {
+        ...basePayload,
+        ...(typeof nextReceiptUrl === 'string' ? { receiptUrl: nextReceiptUrl } : {}),
+      }
+      addTransaction(newTransaction, presetId)
     }
 
     onSuccess?.()
@@ -294,8 +370,19 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
           <Ionicons name="camera-outline" size={18} color="#333" />
           <Text style={styles.receiptButtonText}>Câmera</Text>
         </Pressable>
+        <Pressable style={styles.receiptButton} onPress={handlePickDocument}>
+          <Ionicons name="document-attach-outline" size={18} color="#333" />
+          <Text style={styles.receiptButtonText}>Arquivo</Text>
+        </Pressable>
         {receiptUri ? (
-          <Pressable style={styles.receiptButton} onPress={() => setValue('receiptUri', '')}>
+          <Pressable
+            style={styles.receiptButton}
+            onPress={() => {
+              setReceiptAttachKind('image')
+              setReceiptPickedLabel(null)
+              setValue('receiptUri', '')
+            }}
+          >
             <Ionicons name="close-circle-outline" size={18} color="#dc2626" />
             <Text style={[styles.receiptButtonText, { color: '#dc2626' }]}>Remover</Text>
           </Pressable>
@@ -303,7 +390,16 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
       </View>
 
       {receiptUri ? (
-        <Image source={{ uri: receiptUri }} style={styles.receiptPreview} resizeMode="cover" />
+        receiptAttachKind === 'pdf' ? (
+          <View style={styles.receiptFilePreview}>
+            <Ionicons name="document-text-outline" size={44} color="#555" />
+            <Text style={styles.receiptFilePreviewText} numberOfLines={2}>
+              {receiptPickedLabel ?? 'Documento PDF'}
+            </Text>
+          </View>
+        ) : (
+          <Image source={{ uri: receiptUri }} style={styles.receiptPreview} resizeMode="cover" />
+        )
       ) : null}
 
       {uploading && (
@@ -442,6 +538,24 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 8,
     marginTop: 4,
+  },
+  receiptFilePreview: {
+    width: '100%',
+    minHeight: 120,
+    borderRadius: 8,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    gap: 8,
+  },
+  receiptFilePreviewText: {
+    fontSize: 14,
+    color: '#444',
+    textAlign: 'center',
   },
   uploadingRow: {
     flexDirection: 'row',

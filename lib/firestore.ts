@@ -1,19 +1,20 @@
 import { db } from '@/lib/firebase'
 import type { Transaction, TransactionType } from '@/lib/types'
 import {
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    limit,
-    orderBy,
-    query,
-    setDoc,
-    startAfter,
-    updateDoc,
-    where,
-    type DocumentData,
-    type QueryDocumentSnapshot,
+  collection,
+  deleteDoc,
+  deleteField,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  setDoc,
+  startAfter,
+  updateDoc,
+  where,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
 function transactionForUserDoc(t: Transaction): Record<string, unknown> {
@@ -115,12 +116,30 @@ export async function addTransactionDoc(
   await setDoc(doc(transactionsCol(accountNumber), id), data)
 }
 
+/** `receiptUrl: null` remove o campo no documento (e o recibo deixa de aparecer no app). */
+export type TransactionDocUpdate = Omit<
+  Partial<Omit<Transaction, 'id'>>,
+  'receiptUrl'
+> & {
+  receiptUrl?: string | null
+}
+
 export async function updateTransactionDoc(
   accountNumber: string,
   id: string,
-  data: Partial<Omit<Transaction, 'id'>>,
+  data: TransactionDocUpdate,
 ): Promise<void> {
-  await updateDoc(doc(transactionsCol(accountNumber), id), data)
+  const { receiptUrl, ...rest } = data
+  const payload: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined) payload[key] = value
+  }
+  if (receiptUrl === null) {
+    payload.receiptUrl = deleteField()
+  } else if (receiptUrl !== undefined) {
+    payload.receiptUrl = receiptUrl
+  }
+  await updateDoc(doc(transactionsCol(accountNumber), id), payload)
 }
 
 export async function deleteTransactionDoc(
