@@ -1,35 +1,35 @@
 import { PrimaryButton } from '@/components/PrimaryButton'
 import { useAccount } from '@/contexts/AccountContext'
 import { auth } from '@/firebase/config'
+import type { TransactionDocUpdate } from '@/lib/firestore'
 import { formatCurrencyInput, parseCurrency } from '@/lib/format'
 import { uploadReceipt } from '@/lib/receipt-storage'
-import type { TransactionDocUpdate } from '@/lib/firestore'
 import {
-  TRANSACTION_TYPES,
-  type TransactionFormValues,
-  formDateToIso,
-  isoToFormDate,
-  transactionSchema,
+    TRANSACTION_TYPES,
+    type TransactionFormValues,
+    formDateToIso,
+    isoToFormDate,
+    transactionSchema,
 } from '@/lib/transaction-schema'
 import type { Transaction } from '@/lib/types'
 import { theme } from '@/theme/colors'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
+import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native'
 import Toast from 'react-native-toast-message'
 
@@ -216,7 +216,7 @@ export function TransactionForm({ transaction, onSuccess }: TransactionFormProps
         ...basePayload,
         ...(nextReceiptUrl !== undefined ? { receiptUrl: nextReceiptUrl } : {}),
       }
-      updateTransaction(transaction.id, patch)
+      updateTransaction(transaction.id, patch, transaction)
     } else {
       const newTransaction: Omit<Transaction, 'id'> = {
         ...basePayload,

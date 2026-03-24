@@ -1,15 +1,43 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native'
-import { useRouter } from 'expo-router'
-import Ionicons from '@expo/vector-icons/Ionicons'
-import { useAccount } from '@/contexts/AccountContext'
 import { RecentTransactionRow } from '@/components/RecentTransactionRow'
+import { useAccount } from '@/contexts/AccountContext'
+import { fetchTransactions } from '@/lib/firestore'
+import type { Transaction } from '@/lib/types'
 import { theme } from '@/theme/colors'
+import Ionicons from '@expo/vector-icons/Ionicons'
+import { useRouter } from 'expo-router'
+import { useEffect, useRef, useState } from 'react'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
 export function RecentTransactions() {
-  const { account } = useAccount()
+  const { account, mutationVersion } = useAccount()
   const router = useRouter()
-  const transactions = account?.transactions ?? []
-  const recentTransactions = transactions.slice(0, 5)
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(false)
+  const didMountRef = useRef(false)
+
+  useEffect(() => {
+    if (!account?.accountNumber) return
+    let cancelled = false
+    setLoading(true)
+    fetchTransactions(account.accountNumber, {}, null)
+      .then((result) => {
+        if (!cancelled) setRecentTransactions(result.transactions.slice(0, 5))
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [account?.accountNumber])
+
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return }
+    if (!account?.accountNumber) return
+    let cancelled = false
+    fetchTransactions(account.accountNumber, {}, null)
+      .then((result) => {
+        if (!cancelled) setRecentTransactions(result.transactions.slice(0, 5))
+      })
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutationVersion])
 
   const handleVerTodas = () => {
     router.push('/(tabs)/transacoes')
@@ -24,7 +52,9 @@ export function RecentTransactions() {
         </Pressable>
       </View>
       <View style={styles.content}>
-        {recentTransactions.length > 0 ? (
+        {loading ? (
+          <ActivityIndicator size="small" color={theme.primary} />
+        ) : recentTransactions.length > 0 ? (
           <>
             {recentTransactions.map((transaction) => (
               <RecentTransactionRow

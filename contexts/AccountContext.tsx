@@ -1,16 +1,15 @@
 import { auth } from '@/firebase/config'
 import {
-  addTransactionDoc,
-  deleteTransactionDoc,
-  fetchAllTransactions,
-  updateTransactionDoc,
-  updateUserProfileFinancials,
-  type TransactionDocUpdate,
+    addTransactionDoc,
+    deleteTransactionDoc,
+    updateTransactionDoc,
+    updateUserProfileFinancials,
+    type TransactionDocUpdate,
 } from '@/lib/firestore'
 import { deleteReceiptFromFirebaseIfPresent } from '@/lib/receipt-storage'
-import { fetchUserAccountDocument } from '@/lib/user-account-from-firestore'
 import { removeSecureItem, setSecureItem } from '@/lib/storage'
 import type { Account, Transaction } from '@/lib/types'
+import { fetchUserAccountDocument } from '@/lib/user-account-from-firestore'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import Toast from 'react-native-toast-message'
@@ -20,39 +19,18 @@ interface AccountContextType {
   login: (accountData: Account) => Promise<void>
   logout: () => Promise<void>
   addTransaction: (transactionData: Omit<Transaction, 'id'>, presetId?: string) => void
-  updateTransaction: (id: string, updatedData: TransactionDocUpdate) => void
-  deleteTransaction: (id: string) => void
+  updateTransaction: (id: string, updatedData: TransactionDocUpdate, oldTransaction: Transaction) => void
+  deleteTransaction: (id: string, transaction: Transaction) => void
   isHydrated: boolean
+  mutationVersion: number
 }
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined)
 
-async function mergeWithSubcollectionTransactions(
-  accountData: Account,
-): Promise<Account> {
-  try {
-    const transactions = await fetchAllTransactions(accountData.accountNumber)
-    if (transactions.length > 0) {
-      const balance = transactions.reduce((sum, t) => sum + t.amount, 0)
-      return { ...accountData, transactions, balance }
-    }
-    return {
-      ...accountData,
-      transactions: accountData.transactions ?? [],
-      balance: accountData.balance,
-    }
-  } catch {
-    return {
-      ...accountData,
-      transactions: accountData.transactions ?? [],
-      balance: accountData.balance,
-    }
-  }
-}
-
 export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
+  const [mutationVersion, setMutationVersion] = useState(0)
 
   useEffect(() => {
     void removeSecureItem('accountsList')
@@ -75,10 +53,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
           user.uid,
           user.email ?? '',
         )
-        const merged = await mergeWithSubcollectionTransactions(base)
         if (cancelled) return
-        setAccount(merged)
-        const { transactions: _, ...meta } = merged
+        setAccount({ ...base, transactions: [] })
+        const { transactions: _, ...meta } = base
         await setSecureItem('currentAccount', meta)
       } catch {
         if (!cancelled) setAccount(null)
@@ -109,22 +86,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const uid = accountData.uid ?? auth.currentUser?.uid
     const withUid = uid ? { ...accountData, uid } : accountData
     setAccount({ ...withUid, transactions: [] })
-    try {
-      const merged = await mergeWithSubcollectionTransactions(withUid)
-      setAccount(merged)
-      const { transactions: _, ...meta } = merged
-      await setSecureItem('currentAccount', meta)
-    } catch {
-      setAccount((prev) =>
-        prev
-          ? {
-              ...prev,
-              transactions: withUid.transactions,
-              balance: withUid.balance,
-            }
-          : prev,
-      )
-    }
+    const { transactions: _, ...meta } = withUid
+    await setSecureItem('currentAccount', meta)
   }
 
   const logout = async () => {
@@ -146,11 +109,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     try {
       await subcollectionOp()
       if (uid) {
-        await updateUserProfileFinancials(
-          uid,
-          next.balance,
-          next.transactions,
-        )
+        await updateUserProfileFinancials(uid, next.balance)
       }
       await afterSuccess?.()
     } catch {
@@ -188,10 +147,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const next: Account = {
       ...account,
       balance: account.balance + newTransaction.amount,
-      transactions: [newTransaction, ...account.transactions],
+      transactions: [],
     }
 
     setAccount(next)
+    setMutationVersion((v) => v + 1)
     void syncFirebaseAfterMutation(next, () =>
       addTransactionDoc(account.accountNumber, newTransaction),
     )
@@ -201,13 +161,10 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
-  const updateTransaction = (id: string, updatedData: TransactionDocUpdate) => {
+  const updateTransaction = (id: string, updatedData: TransactionDocUpdate, oldTransaction: Transaction) => {
     if (!account) return
 
-    const transactionToUpdate = account.transactions.find((t) => t.id === id)
-    if (!transactionToUpdate) return
-
-    const prevReceiptUrl = transactionToUpdate.receiptUrl
+    const prevReceiptUrl = oldTransaction.receiptUrl
     const oldFirebaseReceipt =
       prevReceiptUrl?.includes('firebasestorage.googleapis.com') === true
         ? prevReceiptUrl
@@ -224,7 +181,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const oldAmount = transactionToUpdate.amount
+    const oldAmount = oldTransaction.amount
     const newAmount = updatedData.amount ?? oldAmount
     const balanceDifference = newAmount - oldAmount
     const potentialNewBalance = account.balance + balanceDifference
@@ -238,34 +195,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    let balanceDiff = 0
-    const newTransactions = account.transactions.map((t) => {
-      if (t.id !== id) return t
-
-      const prevAmount = t.amount
-      const nextAmount = updatedData.amount ?? prevAmount
-      balanceDiff = nextAmount - prevAmount
-
-      const { receiptUrl: patchReceipt, ...patchRest } = updatedData
-      const mergedBase: Transaction = { ...t, ...patchRest, id }
-
-      if (patchReceipt === null) {
-        const { receiptUrl: _removed, ...rest } = mergedBase
-        return rest
-      }
-      if (typeof patchReceipt === 'string') {
-        return { ...mergedBase, receiptUrl: patchReceipt }
-      }
-      return mergedBase
-    })
-
     const next: Account = {
       ...account,
-      balance: account.balance + balanceDiff,
-      transactions: newTransactions,
+      balance: account.balance + balanceDifference,
+      transactions: [],
     }
 
     setAccount(next)
+    setMutationVersion((v) => v + 1)
     void syncFirebaseAfterMutation(
       next,
       () => updateTransactionDoc(account.accountNumber, id, updatedData),
@@ -279,21 +216,19 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
-  const deleteTransaction = (id: string) => {
+  const deleteTransaction = (id: string, transaction: Transaction) => {
     if (!account) return
 
-    const transactionToDelete = account.transactions.find((t) => t.id === id)
-    if (!transactionToDelete) return
-
-    const receiptUrlToDelete = transactionToDelete.receiptUrl
+    const receiptUrlToDelete = transaction.receiptUrl
 
     const next: Account = {
       ...account,
-      balance: account.balance - transactionToDelete.amount,
-      transactions: account.transactions.filter((t) => t.id !== id),
+      balance: account.balance - transaction.amount,
+      transactions: [],
     }
 
     setAccount(next)
+    setMutationVersion((v) => v + 1)
     void syncFirebaseAfterMutation(
       next,
       () => deleteTransactionDoc(account.accountNumber, id),
@@ -313,6 +248,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         updateTransaction,
         deleteTransaction,
         isHydrated,
+        mutationVersion,
       }}
     >
       {children}

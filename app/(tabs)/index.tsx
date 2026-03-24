@@ -1,15 +1,17 @@
-import { useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Animated } from 'react-native'
-import { useIsFocused } from '@react-navigation/native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { useAccount } from '@/contexts/AccountContext'
-import { PrimaryButton } from '@/components/PrimaryButton'
 import { BalanceCard } from '@/components/BalanceCard'
-import { TransactionForm } from '@/components/TransactionForm'
-import { RecentTransactions } from '@/components/RecentTransactions'
-import { useRouter } from 'expo-router'
-import { MAX_CONTENT_WIDTH, isTabletLayout } from '@/constants/layout'
 import { ChartsNative } from '@/components/charts/ChartsNative'
+import { PrimaryButton } from '@/components/PrimaryButton'
+import { RecentTransactions } from '@/components/RecentTransactions'
+import { TransactionForm } from '@/components/TransactionForm'
+import { MAX_CONTENT_WIDTH, isTabletLayout } from '@/constants/layout'
+import { useAccount } from '@/contexts/AccountContext'
+import { fetchAllTransactions } from '@/lib/firestore'
+import type { Transaction } from '@/lib/types'
+import { useIsFocused } from '@react-navigation/native'
+import { useRouter } from 'expo-router'
+import { useEffect, useRef, useState } from 'react'
+import { ActivityIndicator, Animated, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 function getGreeting(): string {
   const date = new Date()
   const dayOfWeek = date.toLocaleDateString('pt-BR', { weekday: 'long' })
@@ -23,13 +25,36 @@ function getGreeting(): string {
 }
 
 export default function HomeScreen() {
-  const { account, logout, isHydrated } = useAccount()
+  const { account, logout, isHydrated, mutationVersion } = useAccount()
   const router = useRouter()
   const { width } = useWindowDimensions()
   const contentWidth = Math.min(width - 32, MAX_CONTENT_WIDTH)
   const centered = width > MAX_CONTENT_WIDTH
   const isTablet = isTabletLayout(width)
   const isFocused = useIsFocused()
+
+  const [chartTransactions, setChartTransactions] = useState<Transaction[]>([])
+  const chartMountRef = useRef(false)
+
+  useEffect(() => {
+    if (!account?.accountNumber) return
+    let cancelled = false
+    fetchAllTransactions(account.accountNumber)
+      .then((txs) => { if (!cancelled) setChartTransactions(txs) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [account?.accountNumber])
+
+  useEffect(() => {
+    if (!chartMountRef.current) { chartMountRef.current = true; return }
+    if (!account?.accountNumber) return
+    let cancelled = false
+    fetchAllTransactions(account.accountNumber)
+      .then((txs) => { if (!cancelled) setChartTransactions(txs) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutationVersion])
 
   const headerOpacity = useRef(new Animated.Value(0)).current
   const headerTranslateY = useRef(new Animated.Value(16)).current
@@ -218,19 +243,19 @@ export default function HomeScreen() {
           {isTablet ? (
             <View style={[styles.chartsRow, styles.chartsRowTablet]}>
               <View style={[styles.chartItem, styles.chartItemTablet]}>
-                <ChartsNative type="Bar" transactions={account.transactions} />
+                <ChartsNative type="Bar" transactions={chartTransactions} />
               </View>
               <View style={[styles.chartItem, styles.chartItemTablet]}>
-                <ChartsNative type="Pie" transactions={account.transactions} />
+                <ChartsNative type="Pie" transactions={chartTransactions} />
               </View>
             </View>
           ) : (
             <>
               <View style={styles.chartItem}>
-                <ChartsNative type="Bar" transactions={account.transactions} />
+                <ChartsNative type="Bar" transactions={chartTransactions} />
               </View>
               <View style={styles.chartItem}>
-                <ChartsNative type="Pie" transactions={account.transactions} />
+                <ChartsNative type="Pie" transactions={chartTransactions} />
               </View>
             </>
           )}

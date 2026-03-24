@@ -1,20 +1,22 @@
 import { useAccount } from '@/contexts/AccountContext'
+import { fetchTransactions, type TransactionFilters } from '@/lib/firestore'
 import { formatCurrency } from '@/lib/format'
 import type { Transaction, TransactionType } from '@/lib/types'
 import { theme } from '@/theme/colors'
 import Ionicons from '@expo/vector-icons/Ionicons'
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native'
-
 
 const TYPE_CHIPS: { value: TransactionType | 'todos'; label: string }[] = [
   { value: 'todos', label: 'Todos' },
@@ -36,7 +38,7 @@ interface TransactionsListProps {
 }
 
 export default function TransactionsList({ onEdit }: TransactionsListProps) {
-  const { account, deleteTransaction } = useAccount()
+  const { account, deleteTransaction, mutationVersion } = useAccount()
 
   const [selectedType, setSelectedType] = useState<TransactionType | 'todos'>('todos')
   const [dateFrom, setDateFrom] = useState('')
@@ -47,6 +49,15 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const deleteModalClearWebTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // — paginação —
+  const [pagedTransactions, setPagedTransactions] = useState<Transaction[]>([])
+  const [hasMore, setHasMore] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const lastDocRef = useRef<QueryDocumentSnapshot<DocumentData> | null>(null)
+  const requestIdRef = useRef(0)
+  const didMountRef = useRef(false)
+
   useEffect(() => {
     return () => {
       if (deleteModalClearWebTimerRef.current) {
@@ -54,6 +65,77 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
       }
     }
   }, [])
+
+  // Converte DD/MM/AAAA → YYYY-MM-DD para o filtro Firestore
+  function parseDateInput(value: string): string | undefined {
+    const parts = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    return parts ? `${parts[3]}-${parts[2]}-${parts[1]}` : undefined
+  }
+
+  const loadPage = async (reset: boolean) => {
+    if (!account?.accountNumber) return
+
+    const id = ++requestIdRef.current
+
+    const filters: TransactionFilters = {}
+    if (selectedType !== 'todos') filters.type = selectedType
+    const from = parseDateInput(dateFrom)
+    const to = parseDateInput(dateTo)
+    if (from) filters.dateFrom = from
+    if (to) filters.dateTo = to
+
+    const cursor = reset ? null : lastDocRef.current
+
+    if (reset) {
+      setIsLoading(true)
+    } else {
+      setIsLoadingMore(true)
+    }
+
+    try {
+      const result = await fetchTransactions(account.accountNumber, filters, cursor)
+      if (requestIdRef.current !== id) return // resposta stale, descarta
+
+      lastDocRef.current = result.lastDoc
+      setHasMore(result.hasMore)
+      setPagedTransactions((prev) =>
+        reset ? result.transactions : [...prev, ...result.transactions],
+      )
+    } finally {
+      if (requestIdRef.current === id) {
+        setIsLoading(false)
+        setIsLoadingMore(false)
+      }
+    }
+  }
+
+  // Carga inicial quando a conta estiver disponível
+  useEffect(() => {
+    if (account?.accountNumber) {
+      void loadPage(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.accountNumber])
+
+  // Re-query quando filtros server-side mudam
+  useEffect(() => {
+    if (account?.accountNumber) {
+      void loadPage(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedType, dateFrom, dateTo])
+
+  // Refresh pós-mutação (add/edit/delete)
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
+    if (account?.accountNumber) {
+      void loadPage(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutationVersion])
 
   const hasActiveFilters = selectedType !== 'todos' || dateFrom !== '' || dateTo !== '' || search !== ''
 
@@ -65,43 +147,18 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
     setShowDateFilters(false)
   }
 
-  const localFiltered = useMemo(() => {
-    if (!account) return []
-    let list = account.transactions
-    if (selectedType !== 'todos') {
-      list = list.filter((t) => t.type === selectedType)
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase()
-      list = list.filter((t) =>
-        (t.description ?? TYPE_LABELS[t.type]).toLowerCase().includes(q),
-      )
-    }
-    if (dateFrom) {
-      const parts = dateFrom.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-      if (parts) {
-        const iso = `${parts[3]}-${parts[2]}-${parts[1]}`
-        list = list.filter((t) => t.date >= iso)
-      }
-    }
-    if (dateTo) {
-      const parts = dateTo.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-      if (parts) {
-        const iso = `${parts[3]}-${parts[2]}-${parts[1]}`
-        list = list.filter((t) => t.date <= iso)
-      }
-    }
-    return list
-  }, [account, selectedType, search, dateFrom, dateTo])
-
+  // Busca por descrição é client-side sobre as páginas já carregadas
   const displayedTransactions = useMemo(() => {
-    return [...localFiltered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [localFiltered])
+    if (!search.trim()) return pagedTransactions
+    const q = search.trim().toLowerCase()
+    return pagedTransactions.filter((t) =>
+      (t.description ?? TYPE_LABELS[t.type]).toLowerCase().includes(q),
+    )
+  }, [pagedTransactions, search])
 
   /** Só esconde o modal; mantém `deleteTarget` até o fim da animação (evita sumir o resumo antes do overlay). */
   const closeDeleteModal = () => {
     setDeleteModalVisible(false)
-    // react-native-web nem sempre chama onDismiss; limpa o alvo após o fade (~300ms).
     if (Platform.OS === 'web') {
       if (deleteModalClearWebTimerRef.current) {
         clearTimeout(deleteModalClearWebTimerRef.current)
@@ -130,7 +187,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
 
   const handleConfirmDelete = () => {
     if (deleteTarget) {
-      deleteTransaction(deleteTarget.id)
+      deleteTransaction(deleteTarget.id, deleteTarget)
     }
     closeDeleteModal()
   }
@@ -342,6 +399,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         <Text style={styles.resultCount}>
           {displayedTransactions.length}{' '}
           {displayedTransactions.length === 1 ? 'transação' : 'transações'}
+          {hasMore ? '+' : ''}
         </Text>
         {hasActiveFilters && (
           <Pressable style={styles.clearButton} onPress={clearFilters}>
@@ -351,21 +409,39 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         )}
       </View>
 
-      <FlatList
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        data={displayedTransactions}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="wallet-outline" size={40} color="#555" />
-            <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
-          </View>
-        }
-        ListFooterComponent={null}
-      />
+      {isLoading ? (
+        <View style={styles.loadingInitial}>
+          <ActivityIndicator size="large" color="#ffd33d" />
+        </View>
+      ) : (
+        <FlatList
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          data={displayedTransactions}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          onEndReached={() => {
+            if (hasMore && !isLoadingMore) void loadPage(false)
+          }}
+          onEndReachedThreshold={0.4}
+          onRefresh={() => void loadPage(true)}
+          refreshing={isLoading}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="wallet-outline" size={40} color="#555" />
+              <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
+            </View>
+          }
+          ListFooterComponent={
+            isLoadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color="#ffd33d" />
+              </View>
+            ) : null
+          }
+        />
+      )}
     </View>
   )
 }
@@ -380,6 +456,15 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     paddingBottom: 24,
+  },
+  loadingInitial: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingMore: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   searchRow: {
     flexDirection: 'row',
@@ -582,9 +667,6 @@ const styles = StyleSheet.create({
     color: '#555',
     fontSize: 15,
   },
-  footer: {
-    marginVertical: 16,
-  },
   deleteModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -677,4 +759,3 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 })
-

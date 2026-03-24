@@ -1,48 +1,32 @@
 import { db } from '@/lib/firebase'
 import type { Transaction, TransactionType } from '@/lib/types'
 import {
-  collection,
-  deleteDoc,
-  deleteField,
-  doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  setDoc,
-  startAfter,
-  updateDoc,
-  where,
-  type DocumentData,
-  type QueryDocumentSnapshot,
+    collection,
+    deleteDoc,
+    deleteField,
+    doc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    setDoc,
+    startAfter,
+    updateDoc,
+    where,
+    type DocumentData,
+    type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
-function transactionForUserDoc(t: Transaction): Record<string, unknown> {
-  const o: Record<string, unknown> = {
-    id: t.id,
-    type: t.type,
-    amount: t.amount,
-    date: t.date,
-  }
-  if (t.description !== undefined) o.description = t.description
-  if (t.receiptUrl !== undefined) o.receiptUrl = t.receiptUrl
-  return o
-}
-
-/** Atualiza saldo e espelho de transações em `users/{uid}` (além da subcoleção `accounts/.../transactions`). */
+/** Atualiza saldo em `users/{uid}`. */
 export async function updateUserProfileFinancials(
   uid: string,
   balance: number,
-  transactions: Transaction[],
 ): Promise<void> {
   const ref = doc(db, 'users', uid)
-  await updateDoc(ref, {
-    balance,
-    transactions: transactions.map(transactionForUserDoc),
-  })
+  await updateDoc(ref, { balance })
 }
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 export interface TransactionFilters {
   type?: TransactionType | 'todos'
