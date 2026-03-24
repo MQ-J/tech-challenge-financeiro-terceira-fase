@@ -18,7 +18,7 @@
 
 - [x] Permitir ao usuário visualizar uma lista de transações.
 - [x] Filtros avançados (por data, tipo, busca textual).
-- [ ] Scroll infinito ou paginação para grandes volumes de dados.
+- [x] Scroll infinito ou paginação para grandes volumes de dados — **paginação na UI** (10 itens por página, controles anterior/próxima quando há mais de 10 transações após os filtros).
 - [x] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
 
 #### Tela de Adicionar/Editar Transação
@@ -54,7 +54,7 @@
 - [x] Link do repositório Git do projeto.
 - [x] README do projeto com informações para executá-lo em ambiente de desenvolvimento.
 - [x] README + [Documentação Firebase](docs/firebase.md): configuração no Console, arquivos do projeto e passos para executar.
-- [ ] Vídeo demonstrativo de até 5 (cinco) minutos mostrando: login e autenticação; adicionar/editar transações; visualizar e filtrar transações; upload de anexos; integração com Firebase.
+- [x] Vídeo demonstrativo de até 5 (cinco) minutos mostrando: login e autenticação; adicionar/editar transações; visualizar e filtrar transações; upload de anexos; integração com Firebase.
 
 ---
 
@@ -84,7 +84,7 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 
 - **Expo Router** (file-based routing): rota inicial, `(auth)/login`, `(tabs)/` (Dashboard e Transações).
 - Home pós-login com mensagem de boas-vindas e botão Sair.
-- Aba **Transações** com listagem e estrutura para criar/editar transações.
+- Aba **Transações** com listagem e estrutura para criar/editar transações; **paginação** na lista quando o resultado filtrado ultrapassa 10 itens (veja [Paginação na listagem de transações](#paginação-na-listagem-de-transações)).
 - Layout responsivo: breakpoint de tablet em **480px** (reconhece Samsung Tab S FE e similares); hero em linha, grid de vantagens e footer centralizado em telas maiores.
 - **Áreas seguras (notch / status bar / barra de gestos)**: `SafeAreaProvider` no layout raiz; login com `useSafeAreaInsets` no header e footer fixo; abas com `paddingBottom`/`height` da tab bar conforme inset inferior; Home e Transações com `SafeAreaView` no topo para não sobrepor hora e ícones do sistema.
 - **Animações do dashboard**: API **`Animated`** do React Native (`react-native`), com **`useNativeDriver: true`** em opacidade e `translateY` (execução no thread nativo quando suportado). Entrada em sequência (stagger) na Home e fade + slide na aba Transações; as animações **rodam de novo sempre que a aba ganha foco**, usando **`useIsFocused`** do pacote **`@react-navigation/native`** (já trazido pelo Expo Router / React Navigation). Não há pacote separado “native-animated”: o recurso faz parte do core do React Native.
@@ -94,6 +94,13 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 - **AccountContext**: após login, hidrata conta a partir de **Firestore** (`users/{uid}`) e subcoleção **`accounts/{accountNumber}/transactions`**; mutações sincronizam Firestore e espelho em `users/{uid}`.
 - **AuthContext**: `signIn` / `signUp` com Firebase Auth + perfil Firestore no cadastro.
 - Tipos em `lib/types.ts`; integração Firebase detalhada na [Documentação Firebase](docs/firebase.md).
+
+### Paginação na listagem de transações
+
+- **Onde:** componente `components/TransactionsList.tsx` (aba **Transações**).
+- **Regra:** até **10** transações no resultado (após filtros de tipo, data e busca por texto) — a lista se comporta como antes, **sem** barra de paginação. Com **11 ou mais**, aparece uma barra inferior com **anterior / “Página X de Y” / próximo**; cada página mostra no máximo **10** itens.
+- **Implementação:** paginação **no cliente**, sobre o array `account.transactions` já carregado (o contexto continua usando `fetchAllTransactions` em `AccountContext` / `lib/firestore.ts`). Os filtros de texto continuam apenas no app; tipo e intervalo de datas são aplicados em memória na lista.
+- **Firestore (opcional / futuro):** em `lib/firestore.ts`, a função `fetchTransactions` já suporta leitura paginada por cursor (`limit`, `orderBy`, `startAfter`) com `PAGE_SIZE = 10` alinhado à regra da tela; a UI da aba Transações ainda não consome essa função — evita múltiplas leituras só quando for ligada à lista.
 
 ---
 
@@ -128,7 +135,6 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 ```bash
 # Clone o repositório (se ainda não tiver)
 git clone <url-do-repositorio>
-cd tech-challenge-financeiro-terceira-fase
 
 # Instalar dependências
 npm install
@@ -178,7 +184,7 @@ tech-challenge-financeiro-terceira-fase/
 │   ├── PrimaryButton.tsx         # Botão primário/outline
 │   ├── InfosCard.tsx             # Card de vantagens (login)
 │   ├── Checkbox.tsx              # Checkbox termos
-│   ├── FlatListBasics.tsx        # Lista de transações
+│   ├── TransactionsList.tsx      # Lista de transações, filtros e paginação (10/página)
 │   └── ...
 ├── contexts/
 │   ├── AccountContext.tsx        # Conta, sync Firestore + Storage (transações)
