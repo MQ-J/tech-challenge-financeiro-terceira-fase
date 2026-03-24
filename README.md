@@ -143,7 +143,7 @@ npm install
 npx expo start
 ```
 
-A partir daí, use o QR code no terminal para abrir no **Expo Go** ou as teclas do CLI para abrir em **web**, **Android** ou **iOS**.
+Utilize o QR code no terminal para abrir no **Expo Go** ou as teclas do CLI para abrir em **web**, **Android** ou **iOS**.
 
 ### Firebase (obrigatório para login, transações e recibos)
 
