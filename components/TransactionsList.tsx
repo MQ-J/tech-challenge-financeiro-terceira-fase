@@ -2,8 +2,9 @@ import { useAccount } from '@/contexts/AccountContext'
 import { formatCurrency } from '@/lib/format'
 import type { Transaction, TransactionType } from '@/lib/types'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
@@ -12,6 +13,8 @@ import {
   TextInput,
   View,
 } from 'react-native'
+
+const PAGE_SIZE = 20
 
 
 const TYPE_CHIPS: { value: TransactionType | 'todos'; label: string }[] = [
@@ -41,8 +44,14 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
   const [dateTo, setDateTo] = useState('')
   const [search, setSearch] = useState('')
   const [showDateFilters, setShowDateFilters] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const hasActiveFilters = selectedType !== 'todos' || dateFrom !== '' || dateTo !== '' || search !== ''
+
+  const resetFilters = useCallback((fn: () => void) => {
+    fn()
+    setVisibleCount(PAGE_SIZE)
+  }, [])
 
   const clearFilters = () => {
     setSelectedType('todos')
@@ -50,9 +59,10 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
     setDateTo('')
     setSearch('')
     setShowDateFilters(false)
+    setVisibleCount(PAGE_SIZE)
   }
 
-  const localFiltered = useMemo(() => {
+  const allFiltered = useMemo(() => {
     if (!account) return []
     let list = account.transactions
     if (selectedType !== 'todos') {
@@ -78,12 +88,21 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         list = list.filter((t) => t.date <= iso)
       }
     }
-    return list
+    return [...list].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
   }, [account, selectedType, search, dateFrom, dateTo])
 
-  const displayedTransactions = useMemo(() => {
-    return [...localFiltered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [localFiltered])
+  const displayedTransactions = useMemo(
+    () => allFiltered.slice(0, visibleCount),
+    [allFiltered, visibleCount],
+  )
+
+  const hasMore = visibleCount < allFiltered.length
+
+  const handleLoadMore = useCallback(() => {
+    if (hasMore) {
+      setVisibleCount((prev) => prev + PAGE_SIZE)
+    }
+  }, [hasMore])
 
   const handleDelete = (transaction: Transaction) => {
     Alert.alert(
@@ -155,7 +174,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         <TextInput
           style={styles.searchInput}
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(v) => { setSearch(v); setVisibleCount(PAGE_SIZE) }}
           placeholder="Buscar por descrição..."
           placeholderTextColor="#555"
         />
@@ -176,7 +195,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         renderItem={({ item }) => (
           <Pressable
             style={[styles.chip, selectedType === item.value && styles.chipSelected]}
-            onPress={() => setSelectedType(item.value)}
+            onPress={() => resetFilters(() => setSelectedType(item.value))}
           >
             <Text
               style={[styles.chipText, selectedType === item.value && styles.chipTextSelected]}
@@ -209,7 +228,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
               <TextInput
                 style={styles.dateInput}
                 value={dateFrom}
-                onChangeText={(t) => setDateFrom(formatDateInput(t))}
+                onChangeText={(t) => { setDateFrom(formatDateInput(t)); setVisibleCount(PAGE_SIZE) }}
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#666"
                 keyboardType="numeric"
@@ -228,7 +247,7 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
               <TextInput
                 style={styles.dateInput}
                 value={dateTo}
-                onChangeText={(t) => setDateTo(formatDateInput(t))}
+                onChangeText={(t) => { setDateTo(formatDateInput(t)); setVisibleCount(PAGE_SIZE) }}
                 placeholder="DD/MM/AAAA"
                 placeholderTextColor="#666"
                 keyboardType="numeric"
@@ -246,8 +265,8 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
 
       <View style={styles.resultRow}>
         <Text style={styles.resultCount}>
-          {displayedTransactions.length}{' '}
-          {displayedTransactions.length === 1 ? 'transação' : 'transações'}
+          {displayedTransactions.length} de {allFiltered.length}{' '}
+          {allFiltered.length === 1 ? 'transação' : 'transações'}
         </Text>
         {hasActiveFilters && (
           <Pressable style={styles.clearButton} onPress={clearFilters}>
@@ -261,13 +280,21 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         data={displayedTransactions}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="wallet-outline" size={40} color="#555" />
             <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
           </View>
         }
-        ListFooterComponent={null}
+        ListFooterComponent={
+          hasMore ? (
+            <View style={styles.footer}>
+              <ActivityIndicator size="small" color="#aaa" />
+            </View>
+          ) : null
+        }
       />
     </View>
   )
