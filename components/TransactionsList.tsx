@@ -3,7 +3,7 @@ import { formatCurrency } from '@/lib/format'
 import type { Transaction, TransactionType } from '@/lib/types'
 import { theme } from '@/theme/colors'
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   Modal,
@@ -31,6 +31,9 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   saque: 'Saque',
 }
 
+/** Itens por página na lista (≤ este número: sem barra de paginação). */
+const TRANSACTIONS_PAGE_SIZE = 10
+
 interface TransactionsListProps {
   onEdit: (transaction: Transaction) => void
 }
@@ -46,6 +49,8 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
   const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null)
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const deleteModalClearWebTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const listRef = useRef<FlatList<Transaction>>(null)
 
   useEffect(() => {
     return () => {
@@ -97,6 +102,45 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
   const displayedTransactions = useMemo(() => {
     return [...localFiltered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
   }, [localFiltered])
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(displayedTransactions.length / TRANSACTIONS_PAGE_SIZE),
+  )
+  const showPagination = displayedTransactions.length > TRANSACTIONS_PAGE_SIZE
+
+  const paginatedTransactions = useMemo(() => {
+    if (!showPagination) {
+      return displayedTransactions
+    }
+    const start = (currentPage - 1) * TRANSACTIONS_PAGE_SIZE
+    return displayedTransactions.slice(start, start + TRANSACTIONS_PAGE_SIZE)
+  }, [displayedTransactions, currentPage, showPagination])
+
+  const filterKey = `${selectedType}|${dateFrom}|${dateTo}|${search}`
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterKey])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
+    if (showPagination) {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true })
+    }
+  }, [currentPage, showPagination])
+
+  const goPrevPage = useCallback(() => {
+    setCurrentPage((p) => Math.max(1, p - 1))
+  }, [])
+
+  const goNextPage = useCallback(() => {
+    setCurrentPage((p) => Math.min(totalPages, p + 1))
+  }, [totalPages])
 
   /** Só esconde o modal; mantém `deleteTarget` até o fim da animação (evita sumir o resumo antes do overlay). */
   const closeDeleteModal = () => {
@@ -351,21 +395,64 @@ export default function TransactionsList({ onEdit }: TransactionsListProps) {
         )}
       </View>
 
-      <FlatList
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        data={displayedTransactions}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="wallet-outline" size={40} color="#555" />
-            <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
+      <View style={styles.listWrapper}>
+        <FlatList
+          ref={listRef}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          data={paginatedTransactions}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="wallet-outline" size={40} color="#555" />
+              <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
+            </View>
+          }
+        />
+        {showPagination ? (
+          <View style={styles.paginationBar}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.paginationButton,
+                currentPage <= 1 && styles.paginationButtonDisabled,
+                pressed && currentPage > 1 && styles.paginationButtonPressed,
+              ]}
+              onPress={goPrevPage}
+              disabled={currentPage <= 1}
+              accessibilityRole="button"
+              accessibilityLabel="Página anterior"
+            >
+              <Ionicons
+                name="chevron-back"
+                size={20}
+                color={currentPage <= 1 ? '#555' : '#ffd33d'}
+              />
+            </Pressable>
+            <Text style={styles.paginationLabel}>
+              Página {currentPage} de {totalPages}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.paginationButton,
+                currentPage >= totalPages && styles.paginationButtonDisabled,
+                pressed && currentPage < totalPages && styles.paginationButtonPressed,
+              ]}
+              onPress={goNextPage}
+              disabled={currentPage >= totalPages}
+              accessibilityRole="button"
+              accessibilityLabel="Próxima página"
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={currentPage >= totalPages ? '#555' : '#ffd33d'}
+              />
+            </Pressable>
           </View>
-        }
-        ListFooterComponent={null}
-      />
+        ) : null}
+      </View>
     </View>
   )
 }
@@ -374,8 +461,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  listWrapper: {
+    flex: 1,
+  },
   list: {
     flex: 1,
+  },
+  paginationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    backgroundColor: '#15181c',
+  },
+  paginationButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  paginationButtonDisabled: {
+    opacity: 0.5,
+  },
+  paginationButtonPressed: {
+    opacity: 0.75,
+  },
+  paginationLabel: {
+    fontSize: 14,
+    color: '#aaa',
+    minWidth: 120,
+    textAlign: 'center',
   },
   listContent: {
     flexGrow: 1,

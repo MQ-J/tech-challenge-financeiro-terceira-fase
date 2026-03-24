@@ -42,7 +42,7 @@ export async function updateUserProfileFinancials(
   })
 }
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 export interface TransactionFilters {
   type?: TransactionType | 'todos'
