@@ -87,14 +87,32 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       await signUp(data.email, data.password, {
         userName: data.nome.trim(),
         onRegistered: () => {
+          reset()
+          clearErrors()
+          // Vários <Toast /> no app: getRef() usa o último montado. O do modal "Entrar"
+          // fica montado (mesmo fechado) e rouba o toast se fecharmos o cadastro antes.
+          // Mostrar o toast com o modal de cadastro aberto e fechar só no onHide.
+          let modalClosed = false
+          let fallbackId: ReturnType<typeof setTimeout> | null = null
+          const closeModalOnce = () => {
+            if (modalClosed) return
+            modalClosed = true
+            if (fallbackId != null) {
+              clearTimeout(fallbackId)
+              fallbackId = null
+            }
+            onSuccess()
+          }
+
           Toast.show({
             type: 'success',
             text1: 'Conta criada com sucesso!',
             text2: 'O (a) cliente já pode realizar o login.',
+            visibilityTime: 4000,
+            onHide: closeModalOnce,
           })
-          onSuccess()
-          reset()
-          clearErrors()
+
+          fallbackId = setTimeout(closeModalOnce, 5500)
         },
       })
     } catch (e) {

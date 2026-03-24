@@ -7,13 +7,12 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { useRouter } from 'expo-router'
 import React, { createContext, useCallback, useContext, useMemo } from 'react'
 
 type SignUpMeta = {
   /** Nome completo — gravado em Firestore `users/{uid}` para o desafio. */
   userName?: string
-  /** Chamado após sucesso no Auth/Firestore e antes de `router.replace` (fecha modal, etc.). */
+  /** Chamado após sucesso no Auth/Firestore (fecha modal, toast, etc.). */
   onRegistered?: () => void
 }
 
@@ -70,8 +69,6 @@ async function saveUserProfileToFirestore(
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-
   const signIn = useCallback(async (email: string, password: string) => {
     const trimmedEmail = email.trim()
     const cred = await signInWithEmailAndPassword(
@@ -97,14 +94,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           meta?.onRegistered?.()
-          router.replace('/login')
         })
         .catch((err: unknown) => {
           console.log('AuthProvider :: signUp - falha', err)
           throw err
         })
     },
-    [router],
+    [],
   )
 
   const value = useMemo(() => ({ signUp, signIn }), [signUp, signIn])
