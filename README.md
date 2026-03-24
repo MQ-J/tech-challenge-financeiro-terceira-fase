@@ -1,6 +1,6 @@
 # 📱 Lumen Financial - Mobile
 
-> Projeto desenvolvido como parte do Tech Challenge (Fase 3). Uma aplicação de gerenciamento financeiro em React Native (Expo), com autenticação, navegação e armazenamento seguro (local seguro; cloud previsto para integração com Firebase).
+> Projeto desenvolvido como parte do Tech Challenge (Fase 3). Aplicação de gestão financeira em React Native (Expo), com **Firebase** (Authentication, Firestore, Storage), navegação e persistência local auxiliar (SecureStore / web).
 
 ---
 
@@ -16,17 +16,17 @@
 
 #### Tela de Listagem de Transações
 
-- [ ] Permitir ao usuário visualizar uma lista de transações.
-- [ ] Filtros avançados (por data, categoria, etc.).
+- [x] Permitir ao usuário visualizar uma lista de transações.
+- [x] Filtros avançados (por data, tipo, busca textual).
 - [ ] Scroll infinito ou paginação para grandes volumes de dados.
-- [ ] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
+- [x] Integrar a busca com Cloud Firestore para buscar as transações do usuário autenticado.
 
 #### Tela de Adicionar/Editar Transação
 
-- [ ] Estrutura para adicionar novas transações e editar transações existentes.
-- [ ] Validação de campos com React Hook Form e Zod.
-- [ ] Validação avançada de valor e categoria da transação.
-- [ ] Upload de Recibos: permitir o upload de recibos ou documentos relacionados à transação, salvando-os no Firebase Storage.
+- [x] Estrutura para adicionar novas transações e editar transações existentes.
+- [x] Validação de campos com React Hook Form e Zod.
+- [x] Validação avançada de valor, tipo e data da transação.
+- [x] Upload de recibos/documentos (imagem ou PDF) no **Firebase Storage**, com URL em `receiptUrl`; remoção e exclusão da transação removem o arquivo quando aplicável.
 
 ---
 
@@ -43,9 +43,9 @@
 
 #### Segurança e armazenamento
 
-- [x] Autenticação com senha hasheada (bcrypt) e persistência de sessão.
-- [x] Armazenamento seguro (Expo SecureStore com fallback para web).
-- [ ] Integração com Firebase (Firestore e Storage) para dados em cloud (previsto).
+- [x] Autenticação com **Firebase Auth** (e-mail/senha); persistência nativa com AsyncStorage via `initializeAuth`.
+- [x] Armazenamento seguro local (Expo SecureStore com fallback para web) para metadados de sessão/conta.
+- [x] **Firestore** (perfil `users/{uid}` + transações em `accounts/.../transactions`) e **Cloud Storage** (recibos em `receipts/{uid}/...`).
 
 ---
 
@@ -53,7 +53,7 @@
 
 - [x] Link do repositório Git do projeto.
 - [x] README do projeto com informações para executá-lo em ambiente de desenvolvimento.
-- [ ] README incluindo configuração do Firebase, dependências necessárias e passos para executar (quando Firebase for integrado).
+- [x] README + documentação Firebase: configuração no Console, arquivos do projeto e passos para executar (ver [Arquivo de Configuração do Firebase](docs/firebase-setup.md)).
 - [ ] Vídeo demonstrativo de até 5 (cinco) minutos mostrando: login e autenticação; adicionar/editar transações; visualizar e filtrar transações; upload de anexos; integração com Firebase.
 
 ---
@@ -64,7 +64,7 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 
 | Plataforma | Comando / URL | Descrição |
 | :--- | :--- | :--- |
-| **📱 Expo Go** | `npx expo start` e escanear QR code | App no dispositivo físico. |
+| **📱 Expo Go** | `npx expo start` e escanear QR code | App no dispositivo físico. **Use a mesma rede Wi‑Fi do PC** (modo LAN); em dados móveis o QR costuma apontar para um IP local inacessível. Alternativa: `npx expo start --tunnel`. |
 | **🌐 Web** | `npx expo start --web` → `http://localhost:8081` | Versão web (React Native Web). |
 | **🤖 Android** | `npx expo start --android` | Emulador ou dispositivo Android. |
 | **🍎 iOS** | `npx expo start --ios` | Simulador ou dispositivo iOS (macOS). |
@@ -75,11 +75,10 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 
 ### 🔐 Autenticação e conta
 
-- Tela de login com modal **Entrar** (e-mail e senha).
-- Modal **Abra sua conta** com formulário de cadastro (nome completo, e-mail, senha, confirmação, termos).
-- Validação com Zod e React Hook Form; senhas hasheadas com bcrypt; verificação de e-mail já cadastrado.
-- Toasts de sucesso e erro (react-native-toast-message); redirecionamento para a home após login.
-- Persistência de sessão com Expo SecureStore (e fallback em `localStorage` na web).
+- Tela de login com modal **Entrar** (e-mail e senha) via **Firebase Authentication**.
+- Modal **Abra sua conta** com cadastro: cria usuário no Auth e documento inicial em **Firestore** `users/{uid}` (inclui `accountNumber` para a subcoleção de transações).
+- Validação com Zod e React Hook Form; toasts de sucesso e erro (`react-native-toast-message`).
+- Sessão Firebase: **web** com `getAuth`; **Android/iOS** com `initializeAuth` + persistência em **AsyncStorage**.
 
 ### 🏠 Navegação e layout
 
@@ -92,8 +91,9 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 
 ### 📦 Dados e estado
 
-- **AccountContext**: conta logada, login, logout e hidratação do storage.
-- Tipos e dados mock em `lib`; armazenamento seguro de lista de contas.
+- **AccountContext**: após login, hidrata conta a partir de **Firestore** (`users/{uid}`) e subcoleção **`accounts/{accountNumber}/transactions`**; mutações sincronizam Firestore e espelho em `users/{uid}`.
+- **AuthContext**: `signIn` / `signUp` com Firebase Auth + perfil Firestore no cadastro.
+- Tipos em `lib/types.ts`; integração Firebase detalhada em [docs/firebase-setup.md](docs/firebase-setup.md).
 
 ---
 
@@ -107,7 +107,8 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 | **Animações (dashboard)** | React Native `Animated` + `useNativeDriver`; foco de aba com `useIsFocused` (`@react-navigation/native`) |
 | **Formulários e validação** | React Hook Form, Zod, @hookform/resolvers |
 | **Estado** | Context API (AccountContext) |
-| **Segurança** | react-native-bcrypt, expo-secure-store, crypto-js |
+| **Backend / cloud** | **Firebase** (`firebase` SDK: Auth, Firestore, Storage) |
+| **Segurança / local** | expo-secure-store, crypto-js (storage local); `react-native-bcrypt` em utilitários legados |
 | **UI e feedback** | expo-linear-gradient, react-native-toast-message, @expo/vector-icons, react-native-svg, react-native-gifted-charts |
 | **Layout** | React Native StyleSheet, breakpoint tablet (constants/layout), `react-native-safe-area-context` (SafeAreaProvider / SafeAreaView / insets) |
 | **Outras libs RN (Expo)** | `react-native-reanimated` (stack Expo; animações do dashboard usam `Animated` nativo) |
@@ -138,6 +139,16 @@ npx expo start
 
 A partir daí, use o QR code no terminal para abrir no **Expo Go** ou as teclas do CLI para abrir em **web**, **Android** ou **iOS**.
 
+### Firebase (obrigatório para login, transações e recibos)
+
+1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/) e ative **Authentication** (e-mail/senha), **Firestore** e **Storage**.
+2. Copie as chaves do SDK para `firebase/config.ts` (ou use variáveis `EXPO_PUBLIC_*` se o grupo adotar `.env`).
+3. Publique as **regras do Storage** conforme o arquivo `firebase/storage.rules` (Console → Storage → Rules).
+4. Configure **regras do Firestore** (perfil `users/{uid}` e subcoleção `accounts/{accountId}/transactions`) — exemplo no guia abaixo.
+
+**Guia passo a passo (Console, modelo de dados, arquivos `lib/` e regras):**  
+[**docs/firebase-setup.md**](docs/firebase-setup.md)
+
 ---
 
 ## 📂 Estrutura do projeto
@@ -146,6 +157,11 @@ Formato enxuto, no estilo do desafio:
 
 ```text
 tech-challenge-financeiro-terceira-fase/
+├── docs/
+│   └── firebase-setup.md         # Console Firebase, Firestore/Storage, arquivos relacionados
+├── firebase/
+│   ├── config.ts                 # initializeApp + Auth (web vs native persistence)
+│   └── storage.rules             # Regras Storage (publicar no Console ou deploy CLI)
 ├── app/                          # Rotas (Expo Router)
 │   ├── _layout.tsx               # Layout raiz (Stack, AccountProvider, Toast)
 │   ├── index.tsx                 # Redireciona para login ou (tabs)
@@ -165,12 +181,18 @@ tech-challenge-financeiro-terceira-fase/
 │   ├── FlatListBasics.tsx        # Lista de transações
 │   └── ...
 ├── contexts/
-│   └── AccountContext.tsx        # Estado global (conta, login, logout)
-├── lib/                          # Utilitários e dados
-│   ├── auth.ts                   # bcrypt (legado / utilitários)
-│   ├── storage.ts                # SecureStore + fallback web
-│   ├── types.ts                  # Tipos (Account, etc.)
-│   └── firebase-auth-messages.ts # Mensagens auth/* (Firebase)
+│   ├── AccountContext.tsx        # Conta, sync Firestore + Storage (transações)
+│   └── AuthContext.tsx           # Firebase Auth + perfil inicial Firestore
+├── lib/
+│   ├── firebase.ts               # getFirestore + getStorage (mesmo app que config.ts)
+│   ├── firestore.ts              # Transações na subcoleção + espelho users/{uid}
+│   ├── user-account-from-firestore.ts
+│   ├── receipt-storage.ts        # Upload / delete de recibos no Storage
+│   ├── firebase-auth-messages.ts
+│   ├── storage.ts                # SecureStore + fallback web (metadados locais)
+│   ├── types.ts
+│   ├── auth.ts                   # Utilitários bcrypt (legado)
+│   └── …
 ├── constants/
 │   └── layout.ts                 # TABLET_BREAKPOINT, MAX_CONTENT_WIDTH, FOOTER_HEIGHT
 ├── assets/                       # Imagens e recursos
