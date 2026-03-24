@@ -1,5 +1,15 @@
 import type { Transaction } from './types'
 
+/**
+ * Chave para remontar gráficos quando transações mudam.
+ * O gifted-charts nem sempre atualiza BarChart/PieChart só com mudança de props.
+ */
+export function transactionsChartRemountKey(transactions: Transaction[]): string {
+  return transactions
+    .map((t) => `${t.id}:${t.amount}:${t.date}:${t.type}`)
+    .join('|')
+}
+
 export interface BarChartPoint {
   label: string
   receitas: number

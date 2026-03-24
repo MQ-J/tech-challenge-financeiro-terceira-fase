@@ -1,14 +1,19 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { PieChart } from 'react-native-gifted-charts'
 import type { Transaction } from '@/lib/types'
-import { buildPieChartData } from '@/lib/chartData'
+import { buildPieChartData, transactionsChartRemountKey } from '@/lib/chartData'
 
 interface Props {
   transactions: Transaction[]
 }
 
 export function PieChartExpensesNative({ transactions }: Props) {
+  const chartRemountKey = useMemo(
+    () => transactionsChartRemountKey(transactions),
+    [transactions],
+  )
+
   const now = new Date()
   const currentYear = now.getFullYear()
   const monthName = now.toLocaleString('default', { month: 'long' })
@@ -19,7 +24,7 @@ export function PieChartExpensesNative({ transactions }: Props) {
 
   if (!hasData) {
     return (
-      <View style={styles.emptyContainer}>
+      <View key={chartRemountKey} style={styles.emptyContainer}>
         <Text style={styles.emptyTitle}>Nenhuma despesa registrada no mês atual</Text>
         <Text style={styles.emptySubtitle}>Adicione despesas para visualizar o gráfico</Text>
       </View>
@@ -33,7 +38,7 @@ export function PieChartExpensesNative({ transactions }: Props) {
   }))
 
   return (
-    <View style={styles.card}>
+    <View key={chartRemountKey} style={styles.card}>
       <Text style={styles.title}>Despesas por categoria</Text>
       <Text style={styles.subtitle}>
         {capitalizedMonth} - {currentYear}

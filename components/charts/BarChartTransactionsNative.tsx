@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { BarChart } from 'react-native-gifted-charts'
 import type { Transaction } from '@/lib/types'
-import { buildBarChartData } from '@/lib/chartData'
+import { buildBarChartData, transactionsChartRemountKey } from '@/lib/chartData'
 import { formatCurrency } from '@/lib/format'
 
 interface Props {
@@ -10,12 +10,17 @@ interface Props {
 }
 
 export function BarChartTransactionsNative({ transactions }: Props) {
+  const chartRemountKey = useMemo(
+    () => transactionsChartRemountKey(transactions),
+    [transactions],
+  )
+
   const data = buildBarChartData(transactions)
   const hasData = data.some((d) => d.receitas > 0 || d.despesas > 0)
 
   if (!hasData) {
     return (
-      <View style={styles.emptyContainer}>
+      <View key={chartRemountKey} style={styles.emptyContainer}>
         <Text style={styles.emptyTitle}>Nenhuma transação registrada nos últimos 6 meses</Text>
         <Text style={styles.emptySubtitle}>Adicione transações para visualizar o gráfico</Text>
       </View>
@@ -34,7 +39,7 @@ export function BarChartTransactionsNative({ transactions }: Props) {
   }))
 
   return (
-    <View style={styles.card}>
+    <View key={chartRemountKey} style={styles.card}>
       <Text style={styles.title}>Balanço mensal</Text>
       <Text style={styles.subtitle}>Últimos 6 meses</Text>
       <View style={styles.chartContainer}>
