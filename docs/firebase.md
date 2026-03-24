@@ -1,6 +1,6 @@
 # Firebase – Configuração do Projeto
 
-Este guia descreve o que foi configurado no **Firebase Console** e como o código do app se conecta a **Authentication**, **Cloud Firestore** e **Cloud Storage**. Use-o junto do [README](../README.md) para rodar o projeto em equipe ou em avaliação.
+Este guia descreve o que foi configurado no **Firebase Console** e como o código do app se conecta a **Authentication**, **Cloud Firestore** e **Cloud Storage**.
 
 ---
 

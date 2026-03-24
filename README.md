@@ -53,7 +53,7 @@
 
 - [x] Link do repositório Git do projeto.
 - [x] README do projeto com informações para executá-lo em ambiente de desenvolvimento.
-- [x] README + documentação Firebase: configuração no Console, arquivos do projeto e passos para executar (ver [Arquivo de Configuração do Firebase](docs/firebase-setup.md)).
+- [x] README + [Documentação Firebase](docs/firebase.md): configuração no Console, arquivos do projeto e passos para executar.
 - [ ] Vídeo demonstrativo de até 5 (cinco) minutos mostrando: login e autenticação; adicionar/editar transações; visualizar e filtrar transações; upload de anexos; integração com Firebase.
 
 ---
@@ -93,7 +93,7 @@ Após iniciar o projeto (veja **Getting Started** abaixo):
 
 - **AccountContext**: após login, hidrata conta a partir de **Firestore** (`users/{uid}`) e subcoleção **`accounts/{accountNumber}/transactions`**; mutações sincronizam Firestore e espelho em `users/{uid}`.
 - **AuthContext**: `signIn` / `signUp` com Firebase Auth + perfil Firestore no cadastro.
-- Tipos em `lib/types.ts`; integração Firebase detalhada em [docs/firebase-setup.md](docs/firebase-setup.md).
+- Tipos em `lib/types.ts`; integração Firebase detalhada na [Documentação Firebase](docs/firebase.md).
 
 ---
 
@@ -147,7 +147,7 @@ A partir daí, use o QR code no terminal para abrir no **Expo Go** ou as teclas 
 4. Configure **regras do Firestore** (perfil `users/{uid}` e subcoleção `accounts/{accountId}/transactions`) — exemplo no guia abaixo.
 
 **Guia passo a passo (Console, modelo de dados, arquivos `lib/` e regras):**  
-[**docs/firebase-setup.md**](docs/firebase-setup.md)
+[Documentação Firebase](docs/firebase.md)
 
 ---
 
@@ -158,7 +158,7 @@ Formato enxuto, no estilo do desafio:
 ```text
 tech-challenge-financeiro-terceira-fase/
 ├── docs/
-│   └── firebase-setup.md         # Console Firebase, Firestore/Storage, arquivos relacionados
+│   └── firebase.md         # Console Firebase, Firestore/Storage, arquivos relacionados
 ├── firebase/
 │   ├── config.ts                 # initializeApp + Auth (web vs native persistence)
 │   └── storage.rules             # Regras Storage (publicar no Console ou deploy CLI)
